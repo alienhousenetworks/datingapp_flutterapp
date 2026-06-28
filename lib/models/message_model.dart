@@ -36,10 +36,16 @@ class Message {
     return '';
   }
 
+  static String _parseSenderId(dynamic raw) {
+    if (raw == null) return '';
+    if (raw is Map) return raw['id']?.toString() ?? '';
+    return raw.toString();
+  }
+
   factory Message.fromJson(Map<String, dynamic> json) => Message(
         id: json['id']?.toString() ?? '',
         conversationId: json['conversation']?.toString() ?? '',
-        senderId: json['sender']?.toString() ?? '',
+        senderId: _parseSenderId(json['sender']),
         senderUsername: json['sender_username'] ?? json['sender_name'],
         content: _parseContent(json['content'] ?? json['text']),
         mediaUrl: json['media_url'] ?? json['media'],

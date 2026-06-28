@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,7 +10,11 @@ import '../../providers/chat_provider.dart';
 import '../../providers/confession_provider.dart';
 
 class ConversationsScreen extends ConsumerStatefulWidget {
-  final void Function(String conversationId, String otherUsername) onOpenChat;
+  final void Function(
+    String conversationId,
+    String otherUsername, {
+    String? otherUserId,
+  }) onOpenChat;
 
   const ConversationsScreen({super.key, required this.onOpenChat});
 
@@ -19,6 +25,21 @@ class ConversationsScreen extends ConsumerStatefulWidget {
 
 class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
   String? _processingRequestId;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) refreshChatData(ref);
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
 
   Future<void> _acceptRequest(ConfessionChatRequest request) async {
     if (_processingRequestId != null) return;
@@ -35,7 +56,11 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
       refreshChatData(ref);
       final convId = result.conversationId;
       if (convId != null && convId.isNotEmpty) {
-        widget.onOpenChat(convId, request.senderUsername ?? 'User');
+        widget.onOpenChat(
+          convId,
+          request.senderUsername ?? 'User',
+          otherUserId: request.senderId,
+        );
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -152,6 +177,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                               widget.onOpenChat(
                                 convId,
                                 m.matchedUsername ?? 'User',
+                                otherUserId: m.matchedUserId,
                               );
                             }
                           },
@@ -203,9 +229,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
       return _buildErrorState();
     }
 
-    final activeConversations = (conversations.valueOrNull ?? [])
-        .where((c) => c.lastMessage != null)
-        .toList();
+    final activeConversations = conversations.valueOrNull ?? [];
     final requests = confessionRequests.valueOrNull ?? [];
     final requestsLoading =
         confessionRequests.isLoading && confessionRequests.valueOrNull == null;
@@ -280,6 +304,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
             onTap: () => widget.onOpenChat(
               conv.id,
               conv.otherUsername ?? 'User',
+              otherUserId: conv.otherUserId,
             ),
           ),
         ),
@@ -642,7 +667,8 @@ class _ConversationTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      conversation.lastMessage?.content ?? 'No messages yet',
+                      conversation.lastMessage?.content ??
+                          'Tap to start chatting',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.outfit(

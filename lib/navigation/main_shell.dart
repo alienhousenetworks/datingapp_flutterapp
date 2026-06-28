@@ -10,7 +10,10 @@ import '../screens/profile/my_profile_screen.dart';
 import '../providers/shell_navigation_provider.dart';
 import '../providers/location_provider.dart';
 import '../providers/feed_provider.dart';
+import '../providers/call_manager_provider.dart';
 import '../providers/chat_provider.dart';
+import '../services/notification_websocket.dart';
+import '../widgets/call/incoming_call_overlay.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
@@ -21,17 +24,40 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell> {
   int _selectedIndex = 0;
+  final _notificationWs = NotificationWebSocket();
 
   // Chat navigation state
   String? _openConversationId;
   String? _openConversationUsername;
+  String? _openConversationOtherUserId;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(locationSyncProvider.notifier).syncToProfile();
+      ref.read(callManagerProvider.notifier).ensureConnected();
+      _connectNotifications();
     });
+  }
+
+  Future<void> _connectNotifications() async {
+    final chatService = ref.read(chatServiceProvider);
+    await _notificationWs.connect(
+      ticketProvider: chatService.getWsTicket,
+      onEvent: (data) {
+        final type = data['type']?.toString() ?? '';
+        if (type == 'new_message' || type == 'match_notification') {
+          refreshChatData(ref);
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _notificationWs.disconnect();
+    super.dispose();
   }
 
   void _refreshTabData(int index) {
@@ -49,6 +75,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       setState(() {
         _openConversationId = null;
         _openConversationUsername = null;
+        _openConversationOtherUserId = null;
       });
       return;
     }
@@ -57,15 +84,21 @@ class _MainShellState extends ConsumerState<MainShell> {
       if (index != 1) {
         _openConversationId = null;
         _openConversationUsername = null;
+        _openConversationOtherUserId = null;
       }
     });
   }
 
-  void _openChat(String conversationId, {String username = 'User'}) {
+  void _openChat(
+    String conversationId, {
+    String username = 'User',
+    String? otherUserId,
+  }) {
     setState(() {
       _selectedIndex = 1;
       _openConversationId = conversationId;
       _openConversationUsername = username;
+      _openConversationOtherUserId = otherUserId;
     });
   }
 
@@ -84,10 +117,15 @@ class _MainShellState extends ConsumerState<MainShell> {
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: Scaffold(
-        backgroundColor: const Color(0xFF0C0C0C),
-        body: _buildBody(),
-        bottomNavigationBar: _buildNavBar(),
+      child: Stack(
+        children: [
+          Scaffold(
+            backgroundColor: const Color(0xFF0C0C0C),
+            body: _buildBody(),
+            bottomNavigationBar: _buildNavBar(),
+          ),
+          const IncomingCallOverlay(),
+        ],
       ),
     );
   }
@@ -97,6 +135,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       return ChatScreen(
         conversationId: _openConversationId!,
         otherUsername: _openConversationUsername ?? 'User',
+        otherUserId: _openConversationOtherUserId,
       );
     }
 
@@ -107,8 +146,8 @@ class _MainShellState extends ConsumerState<MainShell> {
         FeedScreen(onOpenChat: _openChatFromFeed),
         // Chat / Conversations
         ConversationsScreen(
-          onOpenChat: (id, username) =>
-              _openChat(id, username: username),
+          onOpenChat: (id, username, {otherUserId}) =>
+              _openChat(id, username: username, otherUserId: otherUserId),
         ),
         // Confessions
         const ConfessionsScreen(),

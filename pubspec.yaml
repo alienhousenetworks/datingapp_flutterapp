@@ -44,6 +44,11 @@ dependencies:
   # Device location
   geolocator: ^13.0.2
 
+  # Real-time chat & calls
+  web_socket_channel: ^3.0.2
+  flutter_webrtc: ^0.12.12
+  permission_handler: ^11.4.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -37,6 +37,13 @@ class AppConstants {
   static const String conversations = '$apiV1/conversations/';
   static const String messages = '$apiV1/messages/';
 
+  // ─── WebSocket (real-time chat & calls) ─────────────────
+  static const String wsBase = 'wss://testapi.spycenow.com/ws';
+
+  // ─── Calls (WebRTC signaling + ICE) ─────────────────────
+  static const String callIceServers = '$apiV1/call/ice-servers/';
+  static const String callQuota = '$apiV1/call/quota/';
+
   // ─── Social (Confessions) ───────────────────────────────
   static const String social = '$apiV1/social/';
   static const String socialFeed = '$apiV1/social/feed/';

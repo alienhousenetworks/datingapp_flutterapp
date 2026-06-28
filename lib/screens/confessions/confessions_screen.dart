@@ -31,55 +31,11 @@ class _ConfessionsScreenState extends ConsumerState<ConfessionsScreen> {
 
   Future<void> _showChatRequestDialog(
       BuildContext context, String confessionId) async {
-    final noteCtrl = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    final note = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: Text(
-          'Send chat request',
-          style: GoogleFonts.outfit(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: TextField(
-          controller: noteCtrl,
-          autofocus: true,
-          maxLines: 4,
-          maxLength: ConfessionService.maxChatRequestLength,
-          style: GoogleFonts.outfit(color: Colors.white),
-          decoration: InputDecoration(
-            hintText:
-                'Introduce yourself (${ConfessionService.minChatRequestLength}–${ConfessionService.maxChatRequestLength} chars)',
-            hintStyle: GoogleFonts.outfit(color: const Color(0xFF666666)),
-            filled: true,
-            fillColor: const Color(0xFF141416),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel',
-                style: GoogleFonts.outfit(color: const Color(0xFF888888))),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Send',
-                style: GoogleFonts.outfit(
-                    color: const Color(0xFFFF2E74),
-                    fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+      builder: (ctx) => const _ChatRequestDialog(),
     );
-    final note = noteCtrl.text.trim();
-    noteCtrl.dispose();
-    if (confirmed != true || !mounted) return;
+    if (note == null || !mounted) return;
 
     if (note.length < ConfessionService.minChatRequestLength) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -112,54 +68,11 @@ class _ConfessionsScreenState extends ConsumerState<ConfessionsScreen> {
   }
 
   Future<void> _showRepostDialog(BuildContext context, String confessionId) async {
-    final thoughtCtrl = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    final thought = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: Text(
-          'Repost confession',
-          style: GoogleFonts.outfit(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: TextField(
-          controller: thoughtCtrl,
-          autofocus: true,
-          maxLines: 3,
-          maxLength: 300,
-          style: GoogleFonts.outfit(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'Add a thought (optional)',
-            hintStyle: GoogleFonts.outfit(color: const Color(0xFF666666)),
-            filled: true,
-            fillColor: const Color(0xFF141416),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel',
-                style: GoogleFonts.outfit(color: const Color(0xFF888888))),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Repost',
-                style: GoogleFonts.outfit(
-                    color: const Color(0xFFFF2E74),
-                    fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+      builder: (ctx) => const _RepostDialog(),
     );
-    final thought = thoughtCtrl.text.trim();
-    thoughtCtrl.dispose();
-    if (confirmed != true || !mounted) return;
+    if (thought == null || !mounted) return;
 
     final err = await ref
         .read(confessionsProvider.notifier)
@@ -363,6 +276,133 @@ class _ConfessionsScreenState extends ConsumerState<ConfessionsScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Dialog owns its [TextEditingController] lifecycle — avoids disposing while
+/// the framework still has dependents (red screen crash).
+class _ChatRequestDialog extends StatefulWidget {
+  const _ChatRequestDialog();
+
+  @override
+  State<_ChatRequestDialog> createState() => _ChatRequestDialogState();
+}
+
+class _ChatRequestDialogState extends State<_ChatRequestDialog> {
+  final _noteCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF1E1E1E),
+      title: Text(
+        'Send chat request',
+        style: GoogleFonts.outfit(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      content: TextField(
+        controller: _noteCtrl,
+        autofocus: true,
+        maxLines: 4,
+        maxLength: ConfessionService.maxChatRequestLength,
+        style: GoogleFonts.outfit(color: Colors.white),
+        decoration: InputDecoration(
+          hintText:
+              'Introduce yourself (${ConfessionService.minChatRequestLength}–${ConfessionService.maxChatRequestLength} chars)',
+          hintStyle: GoogleFonts.outfit(color: const Color(0xFF666666)),
+          filled: true,
+          fillColor: const Color(0xFF141416),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancel',
+              style: GoogleFonts.outfit(color: const Color(0xFF888888))),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, _noteCtrl.text.trim()),
+          child: Text('Send',
+              style: GoogleFonts.outfit(
+                  color: const Color(0xFFFF2E74),
+                  fontWeight: FontWeight.w700)),
+        ),
+      ],
+    );
+  }
+}
+
+class _RepostDialog extends StatefulWidget {
+  const _RepostDialog();
+
+  @override
+  State<_RepostDialog> createState() => _RepostDialogState();
+}
+
+class _RepostDialogState extends State<_RepostDialog> {
+  final _thoughtCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _thoughtCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF1E1E1E),
+      title: Text(
+        'Repost confession',
+        style: GoogleFonts.outfit(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      content: TextField(
+        controller: _thoughtCtrl,
+        autofocus: true,
+        maxLines: 3,
+        maxLength: 300,
+        style: GoogleFonts.outfit(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: 'Add a thought (optional)',
+          hintStyle: GoogleFonts.outfit(color: const Color(0xFF666666)),
+          filled: true,
+          fillColor: const Color(0xFF141416),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancel',
+              style: GoogleFonts.outfit(color: const Color(0xFF888888))),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, _thoughtCtrl.text.trim()),
+          child: Text('Repost',
+              style: GoogleFonts.outfit(
+                  color: const Color(0xFFFF2E74),
+                  fontWeight: FontWeight.w700)),
+        ),
+      ],
     );
   }
 }

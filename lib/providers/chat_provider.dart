@@ -20,7 +20,6 @@ final newMatchesProvider = FutureProvider<List<Match>>((ref) async {
   final conversations = await ref.watch(conversationsProvider.future);
 
   final activeConvUserIds = conversations
-      .where((c) => c.lastMessage != null)
       .map((c) => c.otherUserId)
       .whereType<String>()
       .toSet();
