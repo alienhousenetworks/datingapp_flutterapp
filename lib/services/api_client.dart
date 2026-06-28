@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../core/constants.dart';
+import 'device_context_service.dart';
+import 'location_context.dart';
 import 'storage_service.dart';
 
 class ApiClient {
@@ -21,6 +23,7 @@ class ApiClient {
       ),
     );
 
+    _dio.interceptors.add(_TelemetryInterceptor());
     _dio.interceptors.add(_AuthInterceptor(_dio));
 
     if (kDebugMode) {
@@ -58,6 +61,21 @@ class ApiClient {
 
   Future<Response> postFormData(String path, FormData formData) =>
       _dio.post(path, data: formData);
+}
+
+class _TelemetryInterceptor extends Interceptor {
+  @override
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) {
+    options.headers.addAll(LocationContext.instance.geoHeaders);
+    final ctx = DeviceContextService.instance.cached;
+    if (ctx != null) {
+      options.headers.addAll(ctx.analyticsHeaders);
+    }
+    handler.next(options);
+  }
 }
 
 class _AuthInterceptor extends Interceptor {

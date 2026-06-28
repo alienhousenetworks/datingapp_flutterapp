@@ -14,12 +14,14 @@ class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
   final String otherUsername;
   final String? otherUserId;
+  final VoidCallback? onBack;
 
   const ChatScreen({
     super.key,
     required this.conversationId,
     required this.otherUsername,
     this.otherUserId,
+    this.onBack,
   });
 
   @override
@@ -44,9 +46,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _bootstrap() async {
-    final profile = ref.read(profileProvider).profile;
-    _myUserId = profile?.id;
-
+    await _resolveMyUserId();
     await _loadMessages();
     await _connectWebSocket();
     _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -63,10 +63,45 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  Future<void> _resolveMyUserId() async {
+    var profile = ref.read(profileProvider).profile;
+    if (profile == null) {
+      await ref.read(profileProvider.notifier).loadProfile();
+      profile = ref.read(profileProvider).profile;
+    }
+    if (profile?.id.isNotEmpty == true) {
+      _myUserId = profile!.id;
+      return;
+    }
+    final session = await ref.read(profileServiceProvider).getAuthSession();
+    final sessionUserId = session['user_id']?.toString() ??
+        session['id']?.toString() ??
+        session['user']?.toString();
+    if (sessionUserId != null && sessionUserId.isNotEmpty) {
+      _myUserId = sessionUserId;
+    }
+  }
+
   void _onWsMessage(Map<String, dynamic> data) {
     final type = data['type']?.toString() ?? '';
     if (type == '_reconnected') {
       _loadMessages(silent: true);
+      return;
+    }
+    if (type == 'message_update') {
+      final messageId = data['message_id']?.toString();
+      if (messageId == null || messageId.isEmpty) return;
+      setState(() {
+        _messages = _messages
+            .map(
+              (m) => m.id == messageId
+                  ? m.copyWith(
+                      isSeen: data['is_seen'] == true ? true : m.isSeen,
+                    )
+                  : m,
+            )
+            .toList();
+      });
       return;
     }
     if (type != 'message') return;
@@ -74,10 +109,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final msg = Message.fromJson(data);
     if (msg.id.isEmpty) return;
 
-    final isMine = data['is_me'] == true ||
-        (msg.senderId.isNotEmpty &&
-            _myUserId != null &&
-            msg.senderId == _myUserId);
+    final isMine = _isMyMessage(msg);
 
     if (!isMine && !msg.isSeen) {
       ref.read(chatServiceProvider).markSeen(msg.id);
@@ -86,19 +118,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     setState(() {
       if (_messages.any((m) => m.id == msg.id)) {
         _messages = _messages
-            .map((m) => m.id == msg.id ? msg : m)
+            .map((m) => m.id == msg.id ? msg.copyWith(isMe: isMine) : m)
             .toList();
       } else {
-        // Replace optimistic temp message from same sender text
         final optIdx = _messages.indexWhere(
           (m) => m.id.startsWith('temp-') && m.content == msg.content && isMine,
         );
         if (optIdx != -1) {
           final updated = List<Message>.from(_messages);
-          updated[optIdx] = msg;
+          updated[optIdx] = msg.copyWith(isMe: true);
           _messages = updated;
         } else {
-          _messages = [..._messages, msg];
+          _messages = [..._messages, msg.copyWith(isMe: isMine)];
         }
       }
     });
@@ -123,6 +154,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _messages = msgs;
         if (!silent) _isLoading = false;
       });
+      for (final msg in msgs) {
+        if (!_isMyMessage(msg) && !msg.isSeen) {
+          ref.read(chatServiceProvider).markSeen(msg.id);
+        }
+      }
       _scrollToBottom();
     } catch (_) {
       if (!silent && mounted) setState(() => _isLoading = false);
@@ -154,6 +190,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       conversationId: widget.conversationId,
       senderId: _myUserId ?? '',
       content: text,
+      isMe: true,
       createdAt: DateTime.now(),
     );
     setState(() => _messages = [..._messages, optimistic]);
@@ -165,7 +202,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           .sendMessage(widget.conversationId, text);
       if (!mounted) return;
       setState(() {
-        _messages = _messages.map((m) => m.id == tempId ? msg : m).toList();
+        _messages = _messages
+            .map((m) => m.id == tempId ? msg.copyWith(isMe: true) : m)
+            .toList();
       });
       _scrollToBottom();
     } catch (e) {
@@ -186,15 +225,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   bool _isMyMessage(Message msg) {
+    if (msg.isMe) return true;
     if (_myUserId != null && msg.senderId.isNotEmpty) {
       return msg.senderId == _myUserId;
     }
     return msg.id.startsWith('temp-');
   }
 
-  void _startCall(String callType) {
-    final otherId = widget.otherUserId;
+  void _handleBack() {
+    if (widget.onBack != null) {
+      widget.onBack!();
+      return;
+    }
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<String?> _resolveOtherUserId() async {
+    if (widget.otherUserId != null && widget.otherUserId!.isNotEmpty) {
+      return widget.otherUserId;
+    }
+    try {
+      final conversations = await ref.read(chatServiceProvider).getConversations();
+      for (final conv in conversations) {
+        if (conv.id == widget.conversationId) {
+          return conv.otherUserId;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> _startCall(String callType) async {
+    final otherId = await _resolveOtherUserId();
     if (otherId == null || otherId.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -206,11 +272,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
       return;
     }
-    ref.read(callManagerProvider.notifier).startOutgoingCall(
+
+    await ref.read(callManagerProvider.notifier).startOutgoingCall(
           calleeId: otherId,
           calleeLabel: widget.otherUsername,
           callType: callType,
         );
+
+    if (!mounted) return;
+    final callState = ref.read(callManagerProvider);
+    if (callState.uiState == CallUiState.idle &&
+        callState.statusMessage != null &&
+        callState.statusMessage!.contains('unavailable')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(callState.statusMessage!, style: GoogleFonts.outfit()),
+          backgroundColor: const Color(0xFF1E1E1E),
+        ),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -232,7 +314,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _handleBack,
         ),
         title: Row(
           children: [
@@ -397,13 +479,25 @@ class _MessageBubble extends StatelessWidget {
 
   const _MessageBubble({required this.message, required this.isMe});
 
+  String _formatTime(DateTime time) {
+    final hour = time.hour > 12 ? time.hour - 12 : (time.hour == 0 ? 12 : time.hour);
+    final minute = time.minute.toString().padLeft(2, '0');
+    final suffix = time.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $suffix';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final tickColor = message.isSeen
+        ? const Color(0xFF53BDEB)
+        : Colors.white.withValues(alpha: 0.75);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment:
             isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
             const CircleAvatar(
@@ -415,7 +509,10 @@ class _MessageBubble extends StatelessWidget {
           ],
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.78,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: isMe ? const Color(0xFFFF2E74) : const Color(0xFF1E1E1E),
                 borderRadius: BorderRadius.only(
@@ -425,15 +522,63 @@ class _MessageBubble extends StatelessWidget {
                   bottomRight: Radius.circular(isMe ? 4 : 16),
                 ),
               ),
-              child: Text(
-                message.content,
-                style: GoogleFonts.outfit(
-                  color: isMe ? Colors.white : const Color(0xFFCCCCCC),
-                  fontSize: 15,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.content,
+                    style: GoogleFonts.outfit(
+                      color: isMe ? Colors.white : const Color(0xFFCCCCCC),
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment:
+                        isMe ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _formatTime(message.createdAt),
+                        style: GoogleFonts.outfit(
+                          color: isMe
+                              ? Colors.white.withValues(alpha: 0.7)
+                              : const Color(0xFF888888),
+                          fontSize: 11,
+                        ),
+                      ),
+                      if (isMe) ...[
+                        const SizedBox(width: 4),
+                        if (message.id.startsWith('temp-'))
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: Colors.white.withValues(alpha: 0.75),
+                          )
+                        else if (message.isSeen)
+                          Icon(Icons.done_all, size: 16, color: tickColor)
+                        else if (message.deliveredAt != null)
+                          Icon(
+                            Icons.done_all,
+                            size: 16,
+                            color: Colors.white.withValues(alpha: 0.75),
+                          )
+                        else
+                          Icon(
+                            Icons.done,
+                            size: 16,
+                            color: Colors.white.withValues(alpha: 0.75),
+                          ),
+                      ],
+                    ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+          if (isMe) const SizedBox(width: 4),
         ],
       ),
     );

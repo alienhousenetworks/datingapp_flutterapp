@@ -9,6 +9,8 @@ class Message {
   final String? mediaUrl;
   final String? messageType; // text, image, voice
   final bool isSeen;
+  final bool isMe;
+  final DateTime? deliveredAt;
   final String? reaction;
   final DateTime createdAt;
 
@@ -21,9 +23,40 @@ class Message {
     this.mediaUrl,
     this.messageType,
     this.isSeen = false,
+    this.isMe = false,
+    this.deliveredAt,
     this.reaction,
     required this.createdAt,
   });
+
+  Message copyWith({
+    String? id,
+    String? conversationId,
+    String? senderId,
+    String? senderUsername,
+    String? content,
+    String? mediaUrl,
+    String? messageType,
+    bool? isSeen,
+    bool? isMe,
+    DateTime? deliveredAt,
+    String? reaction,
+    DateTime? createdAt,
+  }) =>
+      Message(
+        id: id ?? this.id,
+        conversationId: conversationId ?? this.conversationId,
+        senderId: senderId ?? this.senderId,
+        senderUsername: senderUsername ?? this.senderUsername,
+        content: content ?? this.content,
+        mediaUrl: mediaUrl ?? this.mediaUrl,
+        messageType: messageType ?? this.messageType,
+        isSeen: isSeen ?? this.isSeen,
+        isMe: isMe ?? this.isMe,
+        deliveredAt: deliveredAt ?? this.deliveredAt,
+        reaction: reaction ?? this.reaction,
+        createdAt: createdAt ?? this.createdAt,
+      );
 
   static String _parseContent(dynamic raw) {
     if (raw is String) return raw;
@@ -51,6 +84,8 @@ class Message {
         mediaUrl: json['media_url'] ?? json['media'],
         messageType: json['message_type'] ?? 'text',
         isSeen: json['is_seen'] ?? json['seen'] ?? false,
+        isMe: json['is_me'] == true,
+        deliveredAt: DateTime.tryParse(json['delivered_at']?.toString() ?? ''),
         reaction: json['reaction'],
         createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
       );

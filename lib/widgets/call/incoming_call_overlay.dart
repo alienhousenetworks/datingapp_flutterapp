@@ -25,7 +25,7 @@ class IncomingCallOverlay extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  info.callType == 'video'
+                  info.callType.toUpperCase() == 'VIDEO'
                       ? Icons.videocam_rounded
                       : Icons.call_rounded,
                   color: const Color(0xFFFF2E74),
@@ -33,7 +33,7 @@ class IncomingCallOverlay extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Incoming ${info.callType == 'video' ? 'video' : 'voice'} call',
+                  'Incoming ${info.callType.toUpperCase() == 'VIDEO' ? 'video' : 'voice'} call',
                   style: GoogleFonts.outfit(
                     color: Colors.white,
                     fontSize: 22,

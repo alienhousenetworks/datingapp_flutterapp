@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/profile_model.dart';
+import '../services/location_context.dart';
 import '../services/profile_service.dart';
 
 // ─── Profile State ───────────────────────────────────────────
@@ -44,6 +45,15 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       final profile = results[0] as UserProfile;
       final session = results[1] as Map<String, dynamic>;
       final identityVerified = session['is_identity_verified'] == true;
+      if (profile.latitude != null && profile.longitude != null) {
+        LocationContext.instance.update(
+          lat: double.tryParse(profile.latitude.toString()),
+          lon: double.tryParse(profile.longitude.toString()),
+          city: profile.city,
+          state: profile.state,
+          country: profile.country,
+        );
+      }
       state = state.copyWith(
         profile: profile.copyWith(
           isIdentityVerified: identityVerified,

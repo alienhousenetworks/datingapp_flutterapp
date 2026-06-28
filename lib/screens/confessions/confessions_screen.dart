@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/confession_model.dart';
 import '../../providers/confession_provider.dart';
+import '../../services/analytics_service.dart';
 import '../../services/confession_service.dart';
 
 class ConfessionsScreen extends ConsumerStatefulWidget {
@@ -587,6 +588,12 @@ class _ConfessionCard extends StatefulWidget {
 
 class _ConfessionCardState extends State<_ConfessionCard> {
   bool _related = false;
+
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.instance.trackConfessionViewed(widget.confession.id);
+  }
 
   String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);

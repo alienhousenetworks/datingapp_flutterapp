@@ -24,6 +24,7 @@ class _CallScreenState extends ConsumerState<CallScreen> {
   final _localRenderer = RTCVideoRenderer();
   final _remoteRenderer = RTCVideoRenderer();
   bool _renderersReady = false;
+  bool _didPop = false;
 
   @override
   void initState() {
@@ -44,15 +45,22 @@ class _CallScreenState extends ConsumerState<CallScreen> {
     super.dispose();
   }
 
+  void _popOnce() {
+    if (_didPop || !mounted) return;
+    _didPop = true;
+    Navigator.of(context).pop();
+  }
+
   Future<void> _hangUp() async {
     await ref.read(callManagerProvider.notifier).hangUp();
-    if (mounted) Navigator.pop(context);
+    _popOnce();
   }
 
   @override
   Widget build(BuildContext context) {
     final call = ref.watch(callManagerProvider);
-    final isVideo = widget.callType == 'video';
+    final isVideo = widget.callType.toLowerCase() == 'video' ||
+        widget.callType.toUpperCase() == 'VIDEO';
 
     if (_renderersReady) {
       _localRenderer.srcObject = call.localStream;
@@ -61,7 +69,7 @@ class _CallScreenState extends ConsumerState<CallScreen> {
 
     ref.listen<CallManagerState>(callManagerProvider, (prev, next) {
       if (next.uiState == CallUiState.idle && prev?.uiState != CallUiState.idle) {
-        if (mounted) Navigator.pop(context);
+        _popOnce();
       }
     });
 

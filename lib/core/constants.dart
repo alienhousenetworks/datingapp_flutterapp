@@ -20,6 +20,11 @@ class AppConstants {
   static const String profileMe = '$apiV1/profile/me/';
   static const String profileList = '$apiV1/profile/';
   static const String usersMe = '$apiV1/users/me/';
+  static const String usersLastActive = '$apiV1/users/last-active/';
+
+  // ─── Analytics & Telemetry ──────────────────────────────
+  static const String analyticsEvents = '$apiV1/analytics/events/';
+  static const String appVersion = '1.0.0';
   static const String profileUsernameAvailable = '$apiV1/profile/username-available/';
 
   // ─── Feed & Interaction ─────────────────────────────────
@@ -43,6 +48,9 @@ class AppConstants {
   // ─── Calls (WebRTC signaling + ICE) ─────────────────────
   static const String callIceServers = '$apiV1/call/ice-servers/';
   static const String callQuota = '$apiV1/call/quota/';
+  static const String callMetrics = '$apiV1/call/metrics/';
+  static const String callIceState = '$apiV1/call/ice-state/';
+  static const String callNetworkProfile = '$apiV1/call/network-profile/';
 
   // ─── Social (Confessions) ───────────────────────────────
   static const String social = '$apiV1/social/';

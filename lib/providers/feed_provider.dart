@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/feed_filters.dart';
 import '../models/feed_item.dart';
 import '../models/feed_page.dart';
+import '../services/analytics_service.dart';
 import '../services/feed_service.dart';
 import 'feed_filter_provider.dart';
 import 'like_tracker_provider.dart';
@@ -202,6 +203,7 @@ class FeedNotifier extends StateNotifier<FeedState> {
   Future<bool> passProfile(String targetUserId) async {
     try {
       await _service.sendPass(targetUserId);
+      AnalyticsService.instance.trackFeedPass(targetUserId);
       final updated =
           state.items.where((item) => item.profile.id != targetUserId).toList();
       state = state.copyWith(items: updated);
@@ -242,6 +244,10 @@ class FeedNotifier extends StateNotifier<FeedState> {
       if (status == 'cooldown' || status == 'liked' || status == 'match') {
         await _likeTracker.recordLike(targetUserId);
         _markProfileLiked(targetUserId);
+        AnalyticsService.instance.trackFeedLike(
+          targetUserId,
+          matched: status == 'match',
+        );
         return LikeResult(
           success: status != 'cooldown',
           alreadyLiked: status == 'cooldown',

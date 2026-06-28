@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/location_context.dart';
 import '../services/location_service.dart';
 import 'profile_provider.dart';
 
@@ -46,6 +47,7 @@ class LocationSyncNotifier extends StateNotifier<LocationSyncState> {
     }
 
     final loc = result.location!;
+    LocationContext.instance.update(lat: loc.latitude, lon: loc.longitude);
     final ok =
         await _ref.read(profileProvider.notifier).updateProfile({
       'latitude': loc.latitude,

@@ -12,7 +12,9 @@ import '../providers/location_provider.dart';
 import '../providers/feed_provider.dart';
 import '../providers/call_manager_provider.dart';
 import '../providers/chat_provider.dart';
+import '../services/heartbeat_service.dart';
 import '../services/notification_websocket.dart';
+import '../services/device_context_service.dart';
 import '../widgets/call/incoming_call_overlay.dart';
 
 class MainShell extends ConsumerStatefulWidget {
@@ -34,8 +36,10 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(locationSyncProvider.notifier).syncToProfile();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await DeviceContextService.instance.getContext(refreshNetwork: true);
+      await HeartbeatService.instance.start();
+      await ref.read(locationSyncProvider.notifier).syncToProfile();
       ref.read(callManagerProvider.notifier).ensureConnected();
       _connectNotifications();
     });
@@ -56,6 +60,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   void dispose() {
+    HeartbeatService.instance.stop();
     _notificationWs.disconnect();
     super.dispose();
   }
@@ -136,6 +141,11 @@ class _MainShellState extends ConsumerState<MainShell> {
         conversationId: _openConversationId!,
         otherUsername: _openConversationUsername ?? 'User',
         otherUserId: _openConversationOtherUserId,
+        onBack: () => setState(() {
+          _openConversationId = null;
+          _openConversationUsername = null;
+          _openConversationOtherUserId = null;
+        }),
       );
     }
 

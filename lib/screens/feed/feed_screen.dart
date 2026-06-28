@@ -10,6 +10,7 @@ import '../../providers/profile_provider.dart';
 import '../../providers/shell_navigation_provider.dart';
 import '../../utils/profile_completeness.dart';
 import '../../widgets/feed/feed_filter_sheet.dart';
+import '../../services/analytics_service.dart';
 import '../../widgets/feed/feed_profile_card.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
@@ -24,8 +25,17 @@ class FeedScreen extends ConsumerStatefulWidget {
 class _FeedScreenState extends ConsumerState<FeedScreen> {
   final PageController _verticalCtrl = PageController();
 
-  void _maybeLoadMore(int index) {
+  void _onPageChanged(int index) {
     final feedState = ref.read(feedProvider);
+    if (index < feedState.items.length) {
+      final item = feedState.items[index];
+      AnalyticsService.instance.trackFeedImpression(
+        profileId: item.profile.id,
+        score: item.score,
+        index: index,
+        source: item.isBoosted ? 'boost' : 'feed',
+      );
+    }
     if (!feedState.hasMore || feedState.isLoadingMore) return;
     if (index >= feedState.items.length - 3) {
       ref.read(feedProvider.notifier).loadMore();
@@ -85,7 +95,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           PageView.builder(
             controller: _verticalCtrl,
             scrollDirection: Axis.vertical,
-            onPageChanged: _maybeLoadMore,
+            onPageChanged: _onPageChanged,
             itemCount: feedState.items.length +
                 (feedState.isLoadingMore ? 1 : 0),
             itemBuilder: (context, index) {
