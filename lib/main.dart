@@ -220,6 +220,7 @@ class _AppRouterState extends ConsumerState<_AppRouter> {
             _currentRoute = _Route.emailSignup;
             ref.read(authProvider.notifier).clearError();
           }),
+          onBypassLogin: () => setState(() => _currentRoute = _Route.main),
         );
 
       case _Route.otp:

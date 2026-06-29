@@ -1,0 +1,3645 @@
+openapi: 3.0.3
+info:
+  title: Dating App Platform API
+  version: 1.0.0
+  description: Production API for real-time dating application.
+paths:
+  /api/v1/analytics/dashboard/:
+    get:
+      operationId: analytics_dashboard_retrieve
+      tags:
+      - analytics
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: Requires a valid refresh token in the body. Blacklists it to prevent
+        further access token generation.
+      summary: Logout by blacklisting refresh token
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LogoutRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LogoutRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMessageResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorResponse'
+          description: ''
+  /api/v1/auth/otp/resend/:
+    post:
+      operationId: auth_otp_resend_create
+      description: Resends the OTP to the previously used email if the rate limit
+        cooldown has expired.
+      summary: Resend OTP
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMessageResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorResponse'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthRateLimitResponse'
+          description: ''
+  /api/v1/auth/otp/verify/:
+    post:
+      operationId: auth_otp_verify_create
+      description: Verifies the previously requested OTP. Returns JWT access/refresh
+        tokens alongside basic user identity data upon success.
+      summary: Verify OTP to receive tokens
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorResponse'
+          description: ''
+  /api/v1/auth/register/:
+    post:
+      operationId: auth_register_create
+      description: Sends a 6-digit OTP to the provided email address. If the user
+        doesn't exist, they are conceptually registered.
+      summary: Request OTP for login/registration
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMessageResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthErrorResponse'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthRateLimitResponse'
+          description: ''
+  /api/v1/auth/ws-ticket/:
+    post:
+      operationId: auth_ws_ticket_create
+      description: Generates a short-lived (30s), single-use ticket for authenticating
+        WebSocket connections without exposing JWTs in the query string.
+      summary: Generate WebSocket Auth Ticket
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WSTicketResponse'
+          description: ''
+  /api/v1/call/adaptive-ice-config/:
+    get:
+      operationId: call_adaptive_ice_config_retrieve
+      tags:
+      - call
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/call/add-minutes/:
+    post:
+      operationId: call_add_minutes_create
+      tags:
+      - call
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/call/connection-prediction/:
+    get:
+      operationId: call_connection_prediction_retrieve
+      tags:
+      - call
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/call/ice-analytics/:
+    get:
+      operationId: call_ice_analytics_retrieve
+      tags:
+      - call
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/call/ice-servers/:
+    get:
+      operationId: call_ice_servers_retrieve
+      tags:
+      - call
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/call/ice-state/:
+    post:
+      operationId: call_ice_state_create
+      tags:
+      - call
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/call/isp-stats/:
+    get:
+      operationId: call_isp_stats_retrieve
+      tags:
+      - call
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/call/metrics/:
+    post:
+      operationId: call_metrics_create
+      tags:
+      - call
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/call/network-profile/:
+    post:
+      operationId: call_network_profile_create
+      tags:
+      - call
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/call/p2p-stats/:
+    get:
+      operationId: call_p2p_stats_retrieve
+      tags:
+      - call
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/call/quota/:
+    get:
+      operationId: call_quota_retrieve
+      tags:
+      - call
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/confession-requests/:
+    get:
+      operationId: confession_requests_list
+      tags:
+      - confession-requests
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AnonymousChatRequest'
+          description: ''
+  /api/v1/confession-requests/{id}/accept/:
+    post:
+      operationId: confession_requests_accept_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this anonymous chat request.
+        required: true
+      tags:
+      - confession-requests
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnonymousChatRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AnonymousChatRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AnonymousChatRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnonymousChatRequest'
+          description: ''
+  /api/v1/confession-requests/{id}/reject/:
+    post:
+      operationId: confession_requests_reject_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this anonymous chat request.
+        required: true
+      tags:
+      - confession-requests
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnonymousChatRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AnonymousChatRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AnonymousChatRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnonymousChatRequest'
+          description: ''
+  /api/v1/conversations/:
+    get:
+      operationId: conversations_list
+      tags:
+      - conversations
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Conversation'
+          description: ''
+    post:
+      operationId: conversations_create
+      tags:
+      - conversations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+          description: ''
+  /api/v1/conversations/{id}/:
+    get:
+      operationId: conversations_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this conversation.
+        required: true
+      tags:
+      - conversations
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+          description: ''
+    put:
+      operationId: conversations_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this conversation.
+        required: true
+      tags:
+      - conversations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+          description: ''
+    patch:
+      operationId: conversations_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this conversation.
+        required: true
+      tags:
+      - conversations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedConversationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedConversationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedConversationRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+          description: ''
+    delete:
+      operationId: conversations_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this conversation.
+        required: true
+      tags:
+      - conversations
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/conversations/{id}/draft/:
+    get:
+      operationId: conversations_draft_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this conversation.
+        required: true
+      tags:
+      - conversations
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+          description: ''
+    post:
+      operationId: conversations_draft_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this conversation.
+        required: true
+      tags:
+      - conversations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+          description: ''
+  /api/v1/conversations/{id}/leave/:
+    post:
+      operationId: conversations_leave_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this conversation.
+        required: true
+      tags:
+      - conversations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+          description: ''
+  /api/v1/conversations/{id}/upload_media/:
+    post:
+      operationId: conversations_upload_media_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this conversation.
+        required: true
+      tags:
+      - conversations
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConversationRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+          description: ''
+  /api/v1/feed/:
+    get:
+      operationId: feed_retrieve
+      tags:
+      - feed
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/genders/:
+    get:
+      operationId: genders_list
+      tags:
+      - genders
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GenderOption'
+          description: ''
+  /api/v1/genders/{id}/:
+    get:
+      operationId: genders_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this gender option.
+        required: true
+      tags:
+      - genders
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenderOption'
+          description: ''
+  /api/v1/geo/autocomplete/:
+    get:
+      operationId: geo_autocomplete_retrieve
+      tags:
+      - geo
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/geo/reverse/:
+    get:
+      operationId: geo_reverse_retrieve
+      tags:
+      - geo
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/images/{id}/:
+    delete:
+      operationId: images_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - images
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/images/reorder/:
+    patch:
+      operationId: images_reorder_partial_update
+      tags:
+      - images
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/images/upload/:
+    post:
+      operationId: images_upload_create
+      tags:
+      - images
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/intents/:
+    get:
+      operationId: intents_list
+      tags:
+      - intents
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IntentOption'
+          description: ''
+  /api/v1/intents/{id}/:
+    get:
+      operationId: intents_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this intent option.
+        required: true
+      tags:
+      - intents
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntentOption'
+          description: ''
+  /api/v1/interaction/accept_request/:
+    post:
+      operationId: interaction_accept_request_create
+      tags:
+      - interaction
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/interaction/pass/:
+    post:
+      operationId: interaction_pass_create
+      tags:
+      - interaction
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/interaction/received/:
+    get:
+      operationId: interaction_received_retrieve
+      tags:
+      - interaction
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/interaction/send/:
+    post:
+      operationId: interaction_send_create
+      tags:
+      - interaction
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/interaction/start_conversation/:
+    post:
+      operationId: interaction_start_conversation_create
+      tags:
+      - interaction
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/languages/:
+    get:
+      operationId: languages_list
+      tags:
+      - languages
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LanguageOption'
+          description: ''
+  /api/v1/languages/{id}/:
+    get:
+      operationId: languages_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this language option.
+        required: true
+      tags:
+      - languages
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LanguageOption'
+          description: ''
+  /api/v1/matches/:
+    get:
+      operationId: matches_list
+      tags:
+      - matches
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Match'
+          description: ''
+  /api/v1/matches/{id}/:
+    get:
+      operationId: matches_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this match.
+        required: true
+      tags:
+      - matches
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Match'
+          description: ''
+  /api/v1/messages/:
+    get:
+      operationId: messages_list
+      tags:
+      - messages
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+          description: ''
+    post:
+      operationId: messages_create
+      tags:
+      - messages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/messages/{id}/:
+    get:
+      operationId: messages_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - messages
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+    put:
+      operationId: messages_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - messages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+    patch:
+      operationId: messages_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - messages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMessageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMessageRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+    delete:
+      operationId: messages_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - messages
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/messages/{id}/react/:
+    post:
+      operationId: messages_react_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - messages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/messages/{id}/report/:
+    post:
+      operationId: messages_report_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - messages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/messages/{id}/seen/:
+    post:
+      operationId: messages_seen_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - messages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/moderation/admin/users/{id}/action/:
+    post:
+      operationId: moderation_admin_users_action_create
+      description: 'Admin actions on a user: CLEAR, WARN, RESTRICT, BAN, IGNORE.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - moderation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/moderation/admin/users/reports/:
+    get:
+      operationId: moderation_admin_users_reports_retrieve
+      description: List all reports.
+      tags:
+      - moderation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/moderation/moderation/block/:
+    post:
+      operationId: moderation_moderation_block_create
+      description: 'Moderation API: Reporting.'
+      tags:
+      - moderation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/moderation/moderation/blocks/:
+    get:
+      operationId: moderation_moderation_blocks_retrieve
+      description: 'Moderation API: Reporting.'
+      tags:
+      - moderation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/moderation/moderation/report/:
+    post:
+      operationId: moderation_moderation_report_create
+      description: Endpoint to report a user/content.
+      tags:
+      - moderation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/moderation/moderation/report_and_block/:
+    post:
+      operationId: moderation_moderation_report_and_block_create
+      description: 'Moderation API: Reporting.'
+      tags:
+      - moderation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/moderation/moderation/unblock/:
+    post:
+      operationId: moderation_moderation_unblock_create
+      description: 'Moderation API: Reporting.'
+      tags:
+      - moderation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/mood/:
+    get:
+      operationId: mood_retrieve
+      tags:
+      - mood
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: mood_create
+      tags:
+      - mood
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/mood/{user_id}/:
+    get:
+      operationId: mood_retrieve_2
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - mood
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: mood_create_2
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - mood
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/mood_options/:
+    get:
+      operationId: mood_options_list
+      tags:
+      - mood_options
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MoodOption'
+          description: ''
+  /api/v1/mood_options/{id}/:
+    get:
+      operationId: mood_options_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this mood option.
+        required: true
+      tags:
+      - mood_options
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoodOption'
+          description: ''
+  /api/v1/notifications/devices/:
+    post:
+      operationId: notifications_devices_create
+      tags:
+      - notifications
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          description: No response body
+  /api/v1/profile/:
+    get:
+      operationId: profile_list
+      tags:
+      - profile
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserProfile'
+          description: ''
+    post:
+      operationId: profile_create
+      tags:
+      - profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+  /api/v1/profile/{id}/:
+    get:
+      operationId: profile_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user profile.
+        required: true
+      tags:
+      - profile
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    put:
+      operationId: profile_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user profile.
+        required: true
+      tags:
+      - profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    patch:
+      operationId: profile_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user profile.
+        required: true
+      tags:
+      - profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    delete:
+      operationId: profile_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this user profile.
+        required: true
+      tags:
+      - profile
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/profile/me/:
+    get:
+      operationId: profile_me_retrieve
+      tags:
+      - profile
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    patch:
+      operationId: profile_me_partial_update
+      tags:
+      - profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+  /api/v1/profile/username-available/:
+    get:
+      operationId: profile_username_available_retrieve
+      tags:
+      - profile
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+  /api/v1/sexualities/:
+    get:
+      operationId: sexualities_list
+      tags:
+      - sexualities
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SexualityOption'
+          description: ''
+  /api/v1/sexualities/{id}/:
+    get:
+      operationId: sexualities_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this sexuality option.
+        required: true
+      tags:
+      - sexualities
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SexualityOption'
+          description: ''
+  /api/v1/social/:
+    get:
+      operationId: social_list
+      tags:
+      - social
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Confession'
+          description: ''
+    post:
+      operationId: social_create
+      tags:
+      - social
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfessionCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfessionCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfessionCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfessionCreate'
+          description: ''
+  /api/v1/social/{id}/:
+    get:
+      operationId: social_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this confession.
+        required: true
+      tags:
+      - social
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Confession'
+          description: ''
+    put:
+      operationId: social_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this confession.
+        required: true
+      tags:
+      - social
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Confession'
+          description: ''
+    patch:
+      operationId: social_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this confession.
+        required: true
+      tags:
+      - social
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedConfessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedConfessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedConfessionRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Confession'
+          description: ''
+    delete:
+      operationId: social_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this confession.
+        required: true
+      tags:
+      - social
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/social/{id}/chat-request/:
+    post:
+      operationId: social_chat_request_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this confession.
+        required: true
+      tags:
+      - social
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Confession'
+          description: ''
+  /api/v1/social/{id}/relate/:
+    post:
+      operationId: social_relate_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this confession.
+        required: true
+      tags:
+      - social
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Confession'
+          description: ''
+  /api/v1/social/{id}/report/:
+    post:
+      operationId: social_report_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this confession.
+        required: true
+      tags:
+      - social
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Confession'
+          description: ''
+  /api/v1/social/{id}/repost/:
+    post:
+      operationId: social_repost_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this confession.
+        required: true
+      tags:
+      - social
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Confession'
+          description: ''
+  /api/v1/social/{id}/whispers/:
+    get:
+      operationId: social_whispers_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this confession.
+        required: true
+      tags:
+      - social
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Confession'
+          description: ''
+    post:
+      operationId: social_whispers_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this confession.
+        required: true
+      tags:
+      - social
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfessionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Confession'
+          description: ''
+  /api/v1/social/feed/:
+    get:
+      operationId: social_feed_retrieve
+      tags:
+      - social
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Confession'
+          description: ''
+  /api/v1/social/moods/:
+    get:
+      operationId: social_moods_retrieve
+      tags:
+      - social
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Confession'
+          description: ''
+  /api/v1/subscription/me/:
+    get:
+      operationId: subscription_me_retrieve
+      description: Current user's subscription status based on gender + sexuality
+        admin config.
+      tags:
+      - subscription
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/subscription/purchase/:
+    post:
+      operationId: subscription_purchase_create
+      description: Purchase premium access using admin-configured price and duration
+        via Razorpay.
+      tags:
+      - subscription
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/theme/me/:
+    get:
+      operationId: theme_me_retrieve
+      description: |-
+        Discovery feed theme registry and user theme preferences.
+
+        Flutter owns all visuals; this API only exposes stable IDs and user selections.
+      tags:
+      - theme
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+    patch:
+      operationId: theme_me_partial_update
+      description: |-
+        Discovery feed theme registry and user theme preferences.
+
+        Flutter owns all visuals; this API only exposes stable IDs and user selections.
+      tags:
+      - theme
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/theme/options/:
+    get:
+      operationId: theme_options_retrieve
+      description: Handler method for HTTP 'OPTIONS' request.
+      tags:
+      - theme
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/token/:
+    post:
+      operationId: token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/v1/token/refresh/:
+    post:
+      operationId: token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/token/verify/:
+    post:
+      operationId: token_verify_create
+      description: |-
+        Takes a token and indicates if it is valid.  This view provides no
+        information about a token's fitness for a particular use.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+        required: true
+      responses:
+        '200':
+          description: No response body
+  /api/v1/turn_ons/:
+    get:
+      operationId: turn_ons_list
+      tags:
+      - turn_ons
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TurnOnOption'
+          description: ''
+  /api/v1/turn_ons/{id}/:
+    get:
+      operationId: turn_ons_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this turn on option.
+        required: true
+      tags:
+      - turn_ons
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TurnOnOption'
+          description: ''
+  /api/v1/users/delete-account/:
+    delete:
+      operationId: users_delete_account_destroy
+      description: |-
+        User details and management APIs.
+        Auth operations (login/logout) are handled by auth.views.
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/users/devices/:
+    get:
+      operationId: users_devices_retrieve
+      description: |-
+        User details and management APIs.
+        Auth operations (login/logout) are handled by auth.views.
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/users/devices/revoke/:
+    post:
+      operationId: users_devices_revoke_create
+      description: |-
+        User details and management APIs.
+        Auth operations (login/logout) are handled by auth.views.
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/users/last-active/:
+    post:
+      operationId: users_last_active_create
+      description: |-
+        User details and management APIs.
+        Auth operations (login/logout) are handled by auth.views.
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/users/me/:
+    get:
+      operationId: users_me_retrieve
+      description: |-
+        User details and management APIs.
+        Auth operations (login/logout) are handled by auth.views.
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/users/request-email-change/:
+    post:
+      operationId: users_request_email_change_create
+      description: |-
+        User details and management APIs.
+        Auth operations (login/logout) are handled by auth.views.
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/users/verify-email-change/:
+    post:
+      operationId: users_verify_email_change_create
+      description: |-
+        User details and management APIs.
+        Auth operations (login/logout) are handled by auth.views.
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/verification/challenge/:
+    post:
+      operationId: verification_challenge_create
+      description: Generates a new pose challenge or FaceIO web redirect URL depending
+        on provider.
+      tags:
+      - verification
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/verification/faceio-complete/:
+    post:
+      operationId: verification_faceio_complete_create
+      description: Receives FaceIO facial_id, validates it against FaceIO REST API,
+        and marks user as verified.
+      tags:
+      - verification
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/verification/status/:
+    get:
+      operationId: verification_status_retrieve
+      description: Returns the current user's verification status, retry count and
+        feed state.
+      tags:
+      - verification
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/verification/upload/:
+    post:
+      operationId: verification_upload_create
+      description: Handles the selfie upload and triggers the async verification process
+        (DeepFace).
+      tags:
+      - verification
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/webhooks/razorpay/:
+    post:
+      operationId: webhooks_razorpay_create
+      description: Webhook receiver for Razorpay events.
+      tags:
+      - webhooks
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /health/:
+    get:
+      operationId: health_retrieve
+      description: |-
+        Liveness check endpoint for basic application availability.
+        GET /health/live/
+        Must return instantly (<10ms). No DB/Redis calls.
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /health/live/:
+    get:
+      operationId: health_live_retrieve
+      description: |-
+        Liveness check endpoint for basic application availability.
+        GET /health/live/
+        Must return instantly (<10ms). No DB/Redis calls.
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /health/ready/:
+    get:
+      operationId: health_ready_retrieve
+      description: |-
+        Readiness check endpoint.
+        GET /health/ready/
+        Validates DB and Redis connections. Caches result for 3 seconds.
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /media/profile/{image_id}/:
+    get:
+      operationId: media_profile_retrieve
+      parameters:
+      - in: path
+        name: image_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - media
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+components:
+  schemas:
+    AnonymousChatRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        confession:
+          type: string
+          format: uuid
+        confession_text:
+          type: string
+          readOnly: true
+        message:
+          type: string
+          nullable: true
+          maxLength: 300
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - confession
+      - confession_text
+      - created_at
+      - expires_at
+      - id
+      - status
+    AnonymousChatRequestRequest:
+      type: object
+      properties:
+        confession:
+          type: string
+          format: uuid
+        message:
+          type: string
+          nullable: true
+          maxLength: 300
+      required:
+      - confession
+    AuthErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+      - error
+    AuthMessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+      - message
+    AuthRateLimitResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+      - error
+    AuthTokenResponse:
+      type: object
+      properties:
+        access:
+          type: string
+        refresh:
+          type: string
+        user:
+          type: object
+          additionalProperties: {}
+      required:
+      - access
+      - refresh
+      - user
+    BlankEnum:
+      enum:
+      - ''
+    Confession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        text:
+          type: string
+          maxLength: 500
+        mood_tag:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/MoodTagEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        language:
+          type: string
+          maxLength: 10
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+        relate_count:
+          type: integer
+          readOnly: true
+        repost_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_author:
+          type: string
+          readOnly: true
+        time_remaining_min:
+          type: string
+          readOnly: true
+        has_requested_chat:
+          type: string
+          readOnly: true
+        user_gender:
+          type: string
+          readOnly: true
+        user_sexuality:
+          type: string
+          readOnly: true
+        user_age:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - has_requested_chat
+      - id
+      - is_author
+      - latitude
+      - longitude
+      - relate_count
+      - repost_count
+      - text
+      - time_remaining_min
+      - user_age
+      - user_gender
+      - user_sexuality
+    ConfessionCreate:
+      type: object
+      properties:
+        text:
+          type: string
+          maxLength: 500
+        mood_tag:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/MoodTagEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        language:
+          type: string
+          maxLength: 10
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+      required:
+      - latitude
+      - longitude
+      - text
+    ConfessionCreateRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 500
+        mood_tag:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/MoodTagEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        language:
+          type: string
+          minLength: 1
+          maxLength: 10
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+      required:
+      - latitude
+      - longitude
+      - text
+    ConfessionRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 500
+        mood_tag:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/MoodTagEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        language:
+          type: string
+          minLength: 1
+          maxLength: 10
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+      required:
+      - latitude
+      - longitude
+      - text
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        other_user:
+          type: string
+          readOnly: true
+        last_message:
+          type: string
+          readOnly: true
+        last_message_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        has_other_user_left:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - has_other_user_left
+      - id
+      - last_message
+      - other_user
+    ConversationRequest:
+      type: object
+      properties:
+        last_message_at:
+          type: string
+          format: date-time
+          nullable: true
+    DiscoveryRadiusTypeEnum:
+      enum:
+      - DISTANCE
+      - CITY
+      - STATE
+      - COUNTRY
+      - GLOBAL
+      type: string
+      description: |-
+        * `DISTANCE` - Distance (Radius)
+        * `CITY` - City
+        * `STATE` - State
+        * `COUNTRY` - Country
+        * `GLOBAL` - Global
+    GenderOption:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - id
+      - name
+    GenderOptionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - name
+    IntentOption:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - id
+      - name
+    IntentOptionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - name
+    LanguageOption:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - id
+      - name
+    LogoutRequestRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    Match:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        other_user:
+          type: string
+          readOnly: true
+        conversation_id:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - conversation_id
+      - created_at
+      - id
+      - other_user
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        conversation:
+          type: string
+          format: uuid
+        sender:
+          type: string
+          format: uuid
+          readOnly: true
+        content: {}
+        message_type:
+          $ref: '#/components/schemas/MessageTypeEnum'
+        is_seen:
+          type: boolean
+        delivered_at:
+          type: string
+          format: date-time
+          nullable: true
+        vanish_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_me:
+          type: string
+          readOnly: true
+        reply_to:
+          type: string
+          format: uuid
+          nullable: true
+        reactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageReaction'
+          readOnly: true
+      required:
+      - content
+      - conversation
+      - created_at
+      - id
+      - is_me
+      - reactions
+      - sender
+    MessageReaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user:
+          allOf:
+          - $ref: '#/components/schemas/PublicUser'
+          readOnly: true
+        emoji:
+          type: string
+          maxLength: 50
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - emoji
+      - id
+      - user
+    MessageReactionRequest:
+      type: object
+      properties:
+        emoji:
+          type: string
+          minLength: 1
+          maxLength: 50
+      required:
+      - emoji
+    MessageRequest:
+      type: object
+      properties:
+        conversation:
+          type: string
+          format: uuid
+        content: {}
+        message_type:
+          $ref: '#/components/schemas/MessageTypeEnum'
+        is_seen:
+          type: boolean
+        delivered_at:
+          type: string
+          format: date-time
+          nullable: true
+        vanish_at:
+          type: string
+          format: date-time
+          nullable: true
+        reply_to:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - content
+      - conversation
+    MessageTypeEnum:
+      enum:
+      - text
+      - image
+      - view_once
+      - audio
+      - video
+      - view_once_video
+      type: string
+      description: |-
+        * `text` - Text
+        * `image` - Image
+        * `view_once` - View Once
+        * `audio` - Audio
+        * `video` - Video
+        * `view_once_video` - View Once Video
+    MoodOption:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - id
+      - name
+    MoodOptionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - name
+    MoodTagEnum:
+      enum:
+      - LONELY
+      - CURIOUS
+      - REGRET
+      - HAPPY
+      - ANXIOUS
+      - HORNY
+      - GRATEFUL
+      - DARK_SECRET
+      - FANTASY
+      - TABOO
+      - GUILT
+      - KINK
+      type: string
+      description: |-
+        * `LONELY` - Lonely
+        * `CURIOUS` - Curious
+        * `REGRET` - Regret
+        * `HAPPY` - Happy
+        * `ANXIOUS` - Anxious
+        * `HORNY` - Horny
+        * `GRATEFUL` - Grateful
+        * `DARK_SECRET` - Dark Secret
+        * `FANTASY` - Fantasy
+        * `TABOO` - Taboo
+        * `GUILT` - Guilt
+        * `KINK` - Kink
+    NullEnum:
+      enum:
+      - null
+    PatchedConfessionRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 500
+        mood_tag:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/MoodTagEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        language:
+          type: string
+          minLength: 1
+          maxLength: 10
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+    PatchedConversationRequest:
+      type: object
+      properties:
+        last_message_at:
+          type: string
+          format: date-time
+          nullable: true
+    PatchedMessageRequest:
+      type: object
+      properties:
+        conversation:
+          type: string
+          format: uuid
+        content: {}
+        message_type:
+          $ref: '#/components/schemas/MessageTypeEnum'
+        is_seen:
+          type: boolean
+        delivered_at:
+          type: string
+          format: date-time
+          nullable: true
+        vanish_at:
+          type: string
+          format: date-time
+          nullable: true
+        reply_to:
+          type: string
+          format: uuid
+          nullable: true
+    PatchedUserProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+          maxLength: 100
+        username:
+          type: string
+          nullable: true
+          maxLength: 30
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        age:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        gender:
+          type: string
+          format: uuid
+          nullable: true
+        sexuality:
+          type: string
+          format: uuid
+          nullable: true
+        preferred_genders:
+          type: array
+          items:
+            type: string
+            format: uuid
+        intent:
+          type: string
+          format: uuid
+          nullable: true
+        intents:
+          type: array
+          items:
+            type: string
+            format: uuid
+        turn_ons:
+          type: array
+          items:
+            type: string
+            format: uuid
+        current_moods:
+          type: array
+          items:
+            type: string
+            format: uuid
+        languages: {}
+        bio:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+          maxLength: 100
+        state:
+          type: string
+          nullable: true
+          maxLength: 100
+        country:
+          type: string
+          nullable: true
+          maxLength: 100
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        age_preference_min:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        age_preference_max:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        distance_preference_km:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        discovery_radius_type:
+          $ref: '#/components/schemas/DiscoveryRadiusTypeEnum'
+        is_paused:
+          type: boolean
+          description: Pause profile (hide from discovery but keep matches)
+        is_hidden:
+          type: boolean
+          description: Hide profile completely (incognito)
+        hide_age:
+          type: boolean
+        hide_online_status:
+          type: boolean
+        hide_distance:
+          type: boolean
+        layout_id:
+          type: string
+          minLength: 1
+          description: Stable layout ID sent to clients, e.g. L01
+          nullable: true
+        bg_id:
+          type: string
+          minLength: 1
+          description: Stable background ID sent to clients, e.g. B01
+          nullable: true
+        bg_variant_id:
+          type: string
+          minLength: 1
+          description: Stable variant ID, e.g. B01-coral
+          nullable: true
+    PublicUser:
+      type: object
+      description: Minimal user info exposed to other users — never includes email.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        is_online:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - is_online
+      - username
+    SexualityOption:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - id
+      - name
+    SexualityOptionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - name
+    StatusEnum:
+      enum:
+      - PENDING
+      - ACCEPTED
+      - REJECTED
+      - EXPIRED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `ACCEPTED` - Accepted
+        * `REJECTED` - Rejected
+        * `EXPIRED` - Expired
+    TokenObtainPair:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    TokenObtainPairRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+      - password
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    TokenVerifyRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - token
+    TurnOnOption:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - id
+      - name
+    TurnOnOptionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - name
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          nullable: true
+          maxLength: 100
+        username:
+          type: string
+          nullable: true
+          maxLength: 30
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        age:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        gender:
+          type: string
+          format: uuid
+          nullable: true
+        gender_detail:
+          allOf:
+          - $ref: '#/components/schemas/GenderOption'
+          readOnly: true
+        sexuality:
+          type: string
+          format: uuid
+          nullable: true
+        sexuality_detail:
+          allOf:
+          - $ref: '#/components/schemas/SexualityOption'
+          readOnly: true
+        preferred_genders:
+          type: array
+          items:
+            type: string
+            format: uuid
+        preferred_genders_detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/GenderOption'
+          readOnly: true
+        intent:
+          type: string
+          format: uuid
+          nullable: true
+        intent_detail:
+          allOf:
+          - $ref: '#/components/schemas/IntentOption'
+          readOnly: true
+        intents:
+          type: array
+          items:
+            type: string
+            format: uuid
+        intents_detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntentOption'
+          readOnly: true
+        turn_ons:
+          type: array
+          items:
+            type: string
+            format: uuid
+        turn_ons_detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/TurnOnOption'
+          readOnly: true
+        current_moods:
+          type: array
+          items:
+            type: string
+            format: uuid
+        current_moods_detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/MoodOption'
+          readOnly: true
+        mood_updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        has_active_mood:
+          type: string
+          readOnly: true
+        languages: {}
+        bio:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+          maxLength: 100
+        state:
+          type: string
+          nullable: true
+          maxLength: 100
+        country:
+          type: string
+          nullable: true
+          maxLength: 100
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        age_preference_min:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        age_preference_max:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        distance_preference_km:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        discovery_radius_type:
+          $ref: '#/components/schemas/DiscoveryRadiusTypeEnum'
+        is_paused:
+          type: boolean
+          description: Pause profile (hide from discovery but keep matches)
+        is_hidden:
+          type: boolean
+          description: Hide profile completely (incognito)
+        hide_age:
+          type: boolean
+        hide_online_status:
+          type: boolean
+        hide_distance:
+          type: boolean
+        completion_percentage:
+          type: integer
+          readOnly: true
+        images:
+          type: string
+          readOnly: true
+        is_discoverable:
+          type: string
+          readOnly: true
+        is_liked:
+          type: string
+          readOnly: true
+        is_online:
+          type: string
+          readOnly: true
+        theme:
+          type: string
+          readOnly: true
+        layout_id:
+          type: string
+          description: Stable layout ID sent to clients, e.g. L01
+          nullable: true
+        bg_id:
+          type: string
+          description: Stable background ID sent to clients, e.g. B01
+          nullable: true
+        bg_variant_id:
+          type: string
+          description: Stable variant ID, e.g. B01-coral
+          nullable: true
+      required:
+      - completion_percentage
+      - current_moods_detail
+      - gender_detail
+      - has_active_mood
+      - id
+      - images
+      - intent_detail
+      - intents_detail
+      - is_discoverable
+      - is_liked
+      - is_online
+      - mood_updated_at
+      - preferred_genders_detail
+      - sexuality_detail
+      - theme
+      - turn_ons_detail
+    UserProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+          maxLength: 100
+        username:
+          type: string
+          nullable: true
+          maxLength: 30
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        age:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        gender:
+          type: string
+          format: uuid
+          nullable: true
+        sexuality:
+          type: string
+          format: uuid
+          nullable: true
+        preferred_genders:
+          type: array
+          items:
+            type: string
+            format: uuid
+        intent:
+          type: string
+          format: uuid
+          nullable: true
+        intents:
+          type: array
+          items:
+            type: string
+            format: uuid
+        turn_ons:
+          type: array
+          items:
+            type: string
+            format: uuid
+        current_moods:
+          type: array
+          items:
+            type: string
+            format: uuid
+        languages: {}
+        bio:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+          maxLength: 100
+        state:
+          type: string
+          nullable: true
+          maxLength: 100
+        country:
+          type: string
+          nullable: true
+          maxLength: 100
+        latitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        longitude:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          nullable: true
+        age_preference_min:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        age_preference_max:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        distance_preference_km:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        discovery_radius_type:
+          $ref: '#/components/schemas/DiscoveryRadiusTypeEnum'
+        is_paused:
+          type: boolean
+          description: Pause profile (hide from discovery but keep matches)
+        is_hidden:
+          type: boolean
+          description: Hide profile completely (incognito)
+        hide_age:
+          type: boolean
+        hide_online_status:
+          type: boolean
+        hide_distance:
+          type: boolean
+        layout_id:
+          type: string
+          minLength: 1
+          description: Stable layout ID sent to clients, e.g. L01
+          nullable: true
+        bg_id:
+          type: string
+          minLength: 1
+          description: Stable background ID sent to clients, e.g. B01
+          nullable: true
+        bg_variant_id:
+          type: string
+          minLength: 1
+          description: Stable variant ID, e.g. B01-coral
+          nullable: true
+    WSTicketResponse:
+      type: object
+      properties:
+        ticket:
+          type: string
+      required:
+      - ticket
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

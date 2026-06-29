@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show WebSocket;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../core/constants.dart';
@@ -155,10 +153,7 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
       final url = '${AppConstants.wsBase}/call/?ticket=$ticket';
       if (kDebugMode) debugPrint('[CallWS] Connecting to $url');
 
-      final ws = await WebSocket.connect(url).timeout(
-        const Duration(seconds: 15),
-      );
-      _socket = IOWebSocketChannel(ws);
+      _socket = WebSocketChannel.connect(Uri.parse(url));
       _socketReady = true;
       _flushOutgoingQueue();
 

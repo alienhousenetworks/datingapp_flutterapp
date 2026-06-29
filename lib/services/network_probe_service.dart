@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../core/constants.dart';
@@ -77,8 +78,14 @@ class NetworkProbeService {
           'connection_type': ctx.connectionType,
         },
       );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[NetworkProbe] Failed to run network probe: $e');
+      }
     } finally {
-      await pc?.close();
+      try {
+        await pc?.close();
+      } catch (_) {}
     }
   }
 

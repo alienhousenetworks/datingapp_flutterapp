@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'theme_model.dart';
 
 // ─── Option Models (lookup lists from backend) ────────────────
@@ -31,15 +32,32 @@ class ProfileImage {
     required this.isPrimary,
   });
 
-  factory ProfileImage.fromJson(Map<String, dynamic> json) => ProfileImage(
-        id: json['id'],
-        url: json['url'] ??
-            json['image_url'] ??
-            json['image'] ??
-            '',
-        order: json['order'] ?? 0,
-        isPrimary: json['is_primary'] ?? json['order'] == 0,
-      );
+  factory ProfileImage.fromJson(Map<String, dynamic> json) {
+    bool parseBool(dynamic val) {
+      if (val == null) return false;
+      if (val is bool) return val;
+      if (val is num) return val != 0;
+      final str = val.toString().toLowerCase().trim();
+      return str == 'true' || str == '1';
+    }
+
+    final orderVal = json['order'] ?? 0;
+    final int order = orderVal is int
+        ? orderVal
+        : (int.tryParse(orderVal.toString()) ?? 0);
+
+    return ProfileImage(
+      id: json['id'],
+      url: json['url'] ??
+          json['image_url'] ??
+          json['image'] ??
+          '',
+      order: order,
+      isPrimary: json['is_primary'] != null
+          ? parseBool(json['is_primary'])
+          : order == 0,
+    );
+  }
 }
 
 // ─── User Profile ──────────────────────────────────────────────
@@ -172,15 +190,41 @@ class UserProfile {
   }
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
-    // Parse images
+    bool parseBool(dynamic val) {
+      if (val == null) return false;
+      if (val is bool) return val;
+      if (val is num) return val != 0;
+      final str = val.toString().toLowerCase().trim();
+      return str == 'true' || str == '1';
+    }
+
+    // Parse images safely
     List<ProfileImage> images = [];
     if (json['images'] != null) {
-      images = (json['images'] as List)
-          .map((i) => ProfileImage.fromJson(i))
-          .toList();
+      var rawImages = json['images'];
+      if (rawImages is String) {
+        try {
+          rawImages = jsonDecode(rawImages);
+        } catch (_) {}
+      }
+      if (rawImages is List) {
+        images = rawImages
+            .map((i) {
+              if (i is Map) {
+                return ProfileImage.fromJson(Map<String, dynamic>.from(i));
+              }
+              return ProfileImage.fromJson({});
+            })
+            .toList();
+      }
     }
 
     List<String> parseIdList(dynamic rawList) {
+      if (rawList is String) {
+        try {
+          rawList = jsonDecode(rawList);
+        } catch (_) {}
+      }
       if (rawList is! List) return [];
       return rawList
           .map((item) =>
@@ -193,11 +237,21 @@ class UserProfile {
       dynamic rawList, {
       dynamic detailList,
     }) {
+      if (detailList is String) {
+        try {
+          detailList = jsonDecode(detailList);
+        } catch (_) {}
+      }
       if (detailList is List && detailList.isNotEmpty) {
         return detailList
             .map((item) => item is Map ? (item['name'] ?? '').toString() : item.toString())
             .where((name) => name.isNotEmpty)
             .toList();
+      }
+      if (rawList is String) {
+        try {
+          rawList = jsonDecode(rawList);
+        } catch (_) {}
       }
       if (rawList is! List) return [];
       return rawList
@@ -220,16 +274,26 @@ class UserProfile {
       detailList: json['turn_ons_detail'],
     );
 
-    // Parse theme
+    // Parse theme safely
     ThemeConfig? theme;
     if (json['theme'] != null) {
-      theme = ThemeConfig.fromJson(json['theme']);
+      var rawTheme = json['theme'];
+      if (rawTheme is String) {
+        try {
+          rawTheme = jsonDecode(rawTheme);
+        } catch (_) {}
+      }
+      if (rawTheme is Map<String, dynamic>) {
+        theme = ThemeConfig.fromJson(rawTheme);
+      } else if (rawTheme is Map) {
+        theme = ThemeConfig.fromJson(Map<String, dynamic>.from(rawTheme));
+      }
     } else if (json['layout_id'] != null || json['bg_id'] != null) {
       theme = ThemeConfig(
-        layoutId: json['layout_id'],
-        bgId: json['bg_id'],
-        bgVariantId: json['bg_variant_id'],
-        colorToken: json['color_token'],
+        layoutId: json['layout_id']?.toString(),
+        bgId: json['bg_id']?.toString(),
+        bgVariantId: json['bg_variant_id']?.toString(),
+        colorToken: json['color_token']?.toString(),
       );
     }
 
@@ -246,17 +310,28 @@ class UserProfile {
       return field?.toString();
     }
 
-    // Parse mood from current_moods_detail
+    // Parse mood safely
     String? mood;
-    if (json['current_moods_detail'] is List &&
-        (json['current_moods_detail'] as List).isNotEmpty) {
-      final first = (json['current_moods_detail'] as List).first;
+    var rawMoodsDetail = json['current_moods_detail'];
+    if (rawMoodsDetail is String) {
+      try {
+        rawMoodsDetail = jsonDecode(rawMoodsDetail);
+      } catch (_) {}
+    }
+    if (rawMoodsDetail is List && rawMoodsDetail.isNotEmpty) {
+      final first = rawMoodsDetail.first;
       if (first is Map) mood = first['name']?.toString();
     }
     mood ??= json['mood']?.toString();
 
+    // Parse preferred genders safely
     List<String> preferredGenderIds = [];
-    final rawPreferred = json['preferred_genders'];
+    var rawPreferred = json['preferred_genders'];
+    if (rawPreferred is String) {
+      try {
+        rawPreferred = jsonDecode(rawPreferred);
+      } catch (_) {}
+    }
     if (rawPreferred is List) {
       preferredGenderIds = rawPreferred
           .map((item) =>
@@ -264,8 +339,15 @@ class UserProfile {
           .where((id) => id.isNotEmpty)
           .toList();
     }
-    if (preferredGenderIds.isEmpty && json['preferred_genders_detail'] is List) {
-      preferredGenderIds = (json['preferred_genders_detail'] as List)
+
+    var rawPreferredDetail = json['preferred_genders_detail'];
+    if (rawPreferredDetail is String) {
+      try {
+        rawPreferredDetail = jsonDecode(rawPreferredDetail);
+      } catch (_) {}
+    }
+    if (preferredGenderIds.isEmpty && rawPreferredDetail is List) {
+      preferredGenderIds = rawPreferredDetail
           .map((item) =>
               item is Map ? (item['id'] ?? '').toString() : item.toString())
           .where((id) => id.isNotEmpty)
@@ -274,14 +356,14 @@ class UserProfile {
 
     return UserProfile(
       id: json['id']?.toString() ?? '',
-      username: json['username'],
-      displayName: json['display_name'] ?? json['name'],
-      email: json['email'],
-      bio: json['bio'],
-      dateOfBirth: json['date_of_birth'] ?? json['dob'],
+      username: json['username']?.toString(),
+      displayName: json['display_name']?.toString() ?? json['name']?.toString(),
+      email: json['email']?.toString(),
+      bio: json['bio']?.toString(),
+      dateOfBirth: json['date_of_birth']?.toString() ?? json['dob']?.toString(),
       age: _parseInt(json['age']),
-      hideAge: json['hide_age'] ?? false,
-      hideDistance: json['hide_distance'] ?? false,
+      hideAge: parseBool(json['hide_age']),
+      hideDistance: parseBool(json['hide_distance']),
       gender: parseOptionName(json['gender'], 'gender_detail'),
       genderId: parseOptionId(json['gender']) ?? json['gender_id']?.toString(),
       sexuality: parseOptionName(json['sexuality'], 'sexuality_detail'),
@@ -302,12 +384,12 @@ class UserProfile {
       longitude: _parseDouble(json['longitude']),
       distance: _parseDouble(json['distance_km']) ??
           _parseDouble(json['distance']),
-      lastActive: json['last_active'],
-      isVerified: json['is_verified'] ?? json['is_identity_verified'] ?? false,
-      isIdentityVerified: json['is_identity_verified'] ?? false,
-      isOnline: json['is_online'] ?? false,
-      isLiked: json['is_liked'] ?? false,
-      isDiscoverable: json['is_discoverable'] ?? false,
+      lastActive: json['last_active']?.toString(),
+      isVerified: parseBool(json['is_verified'] ?? json['is_identity_verified']),
+      isIdentityVerified: parseBool(json['is_identity_verified']),
+      isOnline: parseBool(json['is_online']),
+      isLiked: parseBool(json['is_liked']),
+      isDiscoverable: parseBool(json['is_discoverable']),
       preferredGenderIds: preferredGenderIds,
       themeConfig: theme,
     );

@@ -9,6 +9,7 @@ class EmailScreen extends ConsumerStatefulWidget {
   final VoidCallback? onBack;
   final VoidCallback? onSwitchToLogin;
   final VoidCallback? onSwitchToSignup;
+  final VoidCallback? onBypassLogin;
 
   const EmailScreen({
     super.key,
@@ -17,6 +18,7 @@ class EmailScreen extends ConsumerStatefulWidget {
     this.onBack,
     this.onSwitchToLogin,
     this.onSwitchToSignup,
+    this.onBypassLogin,
   });
 
   @override
@@ -279,6 +281,40 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
                           ),
                   ),
                 ),
+                if (!widget.isSignUp) ...[
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: isLoading
+                        ? null
+                        : () async {
+                            await ref.read(authProvider.notifier).loginBypass();
+                            if (widget.onBypassLogin != null) {
+                              widget.onBypassLogin!();
+                            }
+                          },
+                    child: Container(
+                      width: double.infinity,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFFFF2E74),
+                          width: 1.5,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Temp Bypass Login (Demo)',
+                        style: GoogleFonts.outfit(
+                          color: const Color(0xFFFF2E74),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 32),
                 // Terms note
                 Center(

@@ -108,6 +108,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 
+  Future<void> loginBypass() async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await StorageService.saveTokens(
+        accessToken: 'temp_bypass_access_token',
+        refreshToken: 'temp_bypass_refresh_token',
+      );
+      await StorageService.saveEmail('bypass@example.com');
+      await StorageService.setIsNewUser(false);
+      await StorageService.setOnboardingDone(true);
+      state = state.copyWith(
+        isLoading: false,
+        status: AuthStatus.authenticated,
+        email: 'bypass@example.com',
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
   void clearError() => state = state.copyWith(clearError: true);
 }
 
