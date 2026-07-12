@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../core/constants.dart';
@@ -38,7 +39,11 @@ class NotificationWebSocket {
 
     try {
       final url = '${AppConstants.wsBase}/notifications/?ticket=$ticket';
-      _channel = WebSocketChannel.connect(Uri.parse(url));
+      _channel = IOWebSocketChannel.connect(
+        url,
+        headers: {'Origin': AppConstants.wsOrigin},
+        connectTimeout: const Duration(seconds: 15),
+      );
       _subscription = _channel!.stream.listen(
         (raw) {
           try {

@@ -7,11 +7,13 @@ import '../screens/chat/conversations_screen.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/confessions/confessions_screen.dart';
 import '../screens/profile/my_profile_screen.dart';
+import '../screens/paper_plane/paper_plane_hub_screen.dart';
 import '../providers/shell_navigation_provider.dart';
 import '../providers/location_provider.dart';
 import '../providers/feed_provider.dart';
 import '../providers/call_manager_provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/paper_plane_provider.dart';
 import '../services/heartbeat_service.dart';
 import '../services/notification_websocket.dart';
 import '../services/device_context_service.dart';
@@ -54,8 +56,64 @@ class _MainShellState extends ConsumerState<MainShell> {
         if (type == 'new_message' || type == 'match_notification') {
           refreshChatData(ref);
         }
+        // Paper Plane: refresh inbox when a new plane arrives
+        if (type == 'PAPER_PLANE_INCOMING') {
+          ref.read(catchGameProvider.notifier).checkInbox();
+          _showPaperPlaneNotificationBanner();
+        }
+        // Paper Plane: refresh sender's planes when one is caught or expired
+        if (type == 'PAPER_PLANE_CAUGHT' || type == 'PAPER_PLANE_EXPIRED') {
+          ref.read(paperPlaneSenderProvider.notifier).loadMyPlanes();
+        }
       },
     );
+  }
+
+  void _showPaperPlaneNotificationBanner() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showMaterialBanner(
+      MaterialBanner(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        backgroundColor: const Color(0xFF1A1A1A),
+        content: const Row(
+          children: [
+            Text('✈️', style: TextStyle(fontSize: 20)),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'A paper plane just landed for you!',
+                style: TextStyle(color: Colors.white, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+              setState(() => _selectedIndex = 2); // Paper Plane tab
+            },
+            child: const Text(
+              'Catch it!',
+              style: TextStyle(
+                color: Color(0xFFFF2E74),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () =>
+                ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
+            child: const Text('Dismiss',
+                style: TextStyle(color: Colors.white38)),
+          ),
+        ],
+      ),
+    );
+    // Auto-dismiss after 8 seconds
+    Future.delayed(const Duration(seconds: 8), () {
+      if (mounted) ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+    });
   }
 
   @override
@@ -159,6 +217,8 @@ class _MainShellState extends ConsumerState<MainShell> {
           onOpenChat: (id, username, {otherUserId}) =>
               _openChat(id, username: username, otherUserId: otherUserId),
         ),
+        // Paper Plane
+        const PaperPlaneHubScreen(),
         // Confessions
         const ConfessionsScreen(),
         // Profile
@@ -203,19 +263,27 @@ class _MainShellState extends ConsumerState<MainShell> {
                 onTap: () => _onTabTapped(1),
                 showBack: _openConversationId != null,
               ),
+              // Paper Plane tab
+              _NavItem(
+                icon: Icons.airplanemode_inactive_rounded,
+                activeIcon: Icons.airplanemode_active_rounded,
+                label: 'Plane',
+                isSelected: _selectedIndex == 2,
+                onTap: () => _onTabTapped(2),
+              ),
               _NavItem(
                 icon: Icons.auto_awesome_outlined,
                 activeIcon: Icons.auto_awesome_rounded,
                 label: 'Confess',
-                isSelected: _selectedIndex == 2,
-                onTap: () => _onTabTapped(2),
+                isSelected: _selectedIndex == 3,
+                onTap: () => _onTabTapped(3),
               ),
               _NavItem(
                 icon: Icons.person_outline_rounded,
                 activeIcon: Icons.person_rounded,
                 label: 'Profile',
-                isSelected: _selectedIndex == 3,
-                onTap: () => _onTabTapped(3),
+                isSelected: _selectedIndex == 4,
+                onTap: () => _onTabTapped(4),
               ),
             ],
           ),

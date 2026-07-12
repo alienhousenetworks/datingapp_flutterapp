@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+
+import '../core/constants.dart';
 
 typedef ChatWsMessageHandler = void Function(Map<String, dynamic> data);
 
@@ -40,10 +43,15 @@ class ChatWebSocket {
     final ticket = await _ticketProvider!();
     if (ticket == null || ticket.isEmpty || _disposed) return;
 
-    final url = 'wss://testapi.spycenow.com/ws/chat/$_conversationId/?ticket=$ticket';
+    final url =
+        '${AppConstants.wsBase}/chat/$_conversationId/?ticket=$ticket';
 
     try {
-      _channel = WebSocketChannel.connect(Uri.parse(url));
+      _channel = IOWebSocketChannel.connect(
+        url,
+        headers: {'Origin': AppConstants.wsOrigin},
+        connectTimeout: const Duration(seconds: 15),
+      );
       _reconnectAttempts = 0;
 
       _subscription = _channel!.stream.listen(

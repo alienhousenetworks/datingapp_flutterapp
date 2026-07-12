@@ -7,9 +7,7 @@ import '../core/constants.dart';
 /// Tracks profiles the user liked within the 36h cooldown window.
 /// Persists locally so "Already liked" survives feed refreshes and scroll-back.
 class LikeTrackerService {
-  static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  static const _storage = FlutterSecureStorage();
 
   Map<String, int> _likedAtByUserId = {};
   bool _loaded = false;

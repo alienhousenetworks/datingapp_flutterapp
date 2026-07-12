@@ -44,6 +44,8 @@ class AppConstants {
 
   // ─── WebSocket (real-time chat & calls) ─────────────────
   static const String wsBase = 'wss://testapi.spycenow.com/ws';
+  /// Origin sent on native WebSocket handshakes (must match backend CORS).
+  static const String wsOrigin = 'https://testfrontend.spycenow.com';
 
   // ─── Calls (WebRTC signaling + ICE) ─────────────────────
   static const String callIceServers = '$apiV1/call/ice-servers/';
@@ -91,6 +93,12 @@ class AppConstants {
   static const String moderationBlock = '$apiV1/moderation/moderation/block/';
   static const String moderationReport = '$apiV1/moderation/moderation/report/';
   static const String moderationReportAndBlock = '$apiV1/moderation/moderation/report_and_block/';
+
+  // ─── Paper Plane ─────────────────────────────────────────────
+  static const String paperPlaneBase = '$apiV1/paper-plane/';
+  static const String paperPlaneLaunch = '$apiV1/paper-plane/launch/';
+  static const String paperPlaneMyPlanes = '$apiV1/paper-plane/my-planes/';
+  static const String paperPlaneInbox = '$apiV1/paper-plane/inbox/';
 
   // ─── Storage Keys ───────────────────────────────────────
   static const String keyAccessToken = 'access_token';

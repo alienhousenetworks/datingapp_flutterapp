@@ -25,7 +25,7 @@ class IncomingCallOverlay extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  info.callType.toUpperCase() == 'VIDEO'
+                  info.callType.toLowerCase() == 'video'
                       ? Icons.videocam_rounded
                       : Icons.call_rounded,
                   color: const Color(0xFFFF2E74),
@@ -33,7 +33,7 @@ class IncomingCallOverlay extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Incoming ${info.callType.toUpperCase() == 'VIDEO' ? 'video' : 'voice'} call',
+                  'Incoming ${info.callType.toLowerCase() == 'video' ? 'video' : 'voice'} call',
                   style: GoogleFonts.outfit(
                     color: Colors.white,
                     fontSize: 22,
@@ -63,11 +63,22 @@ class IncomingCallOverlay extends ConsumerWidget {
                       color: const Color(0xFF4CAF50),
                       icon: Icons.call,
                       onTap: () async {
-                        await ref
+                        final result = await ref
                             .read(callManagerProvider.notifier)
                             .acceptIncoming();
                         if (!context.mounted) return;
-                        Navigator.push(
+                        if (!result.success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                result.error ?? 'Could not accept call',
+                              ),
+                              backgroundColor: const Color(0xFF1E1E1E),
+                            ),
+                          );
+                          return;
+                        }
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => CallScreen(

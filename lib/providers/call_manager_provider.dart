@@ -16,6 +16,13 @@ import 'chat_provider.dart';
 
 enum CallUiState { idle, outgoing, incoming, active, ended }
 
+class CallStartResult {
+  final bool success;
+  final String? error;
+
+  const CallStartResult({required this.success, this.error});
+}
+
 class IncomingCallInfo {
   final String callId;
   final String callerId;
@@ -37,6 +44,7 @@ class CallManagerState {
   final String? callType;
   final String? remoteLabel;
   final String? statusMessage;
+  final bool socketConnected;
   final MediaStream? localStream;
   final MediaStream? remoteStream;
 
@@ -47,6 +55,7 @@ class CallManagerState {
     this.callType,
     this.remoteLabel,
     this.statusMessage,
+    this.socketConnected = false,
     this.localStream,
     this.remoteStream,
   });
@@ -59,6 +68,7 @@ class CallManagerState {
     String? callType,
     String? remoteLabel,
     String? statusMessage,
+    bool? socketConnected,
     MediaStream? localStream,
     MediaStream? remoteStream,
     bool clearStreams = false,
@@ -70,6 +80,7 @@ class CallManagerState {
         callType: callType ?? this.callType,
         remoteLabel: remoteLabel ?? this.remoteLabel,
         statusMessage: statusMessage ?? this.statusMessage,
+        socketConnected: socketConnected ?? this.socketConnected,
         localStream: clearStreams ? null : (localStream ?? this.localStream),
         remoteStream: clearStreams ? null : (remoteStream ?? this.remoteStream),
       );
@@ -90,37 +101,40 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
   bool _endingCall = false;
   bool _socketReady = false;
   bool _connecting = false;
+  bool _settingUpPeer = false;
   Completer<void>? _connectCompleter;
   final List<Map<String, dynamic>> _outgoingQueue = [];
   final List<RTCIceCandidate> _pendingIceCandidates = [];
-
-  String _normalizeCallType(String callType) {
-    final normalized = callType.toUpperCase();
-    if (normalized == 'VIDEO' || normalized == 'BLIND_DATE') {
-      return normalized;
-    }
-    return 'VOICE';
-  }
 
   bool _needsVideo(String callType) {
     final t = callType.toLowerCase();
     return t == 'video' || t == 'blind_date';
   }
+
+  String _displayCallType(String callType) {
+    final t = callType.toLowerCase();
+    if (t == 'video') return 'video';
+    if (t == 'blind_date') return 'blind_date';
+    return 'voice';
+  }
+
   Future<void> ensureConnected() async {
     if (_socketReady && _socket != null) return;
+
     if (_connecting && _connectCompleter != null) {
-      await _connectCompleter!.future.timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {},
-      );
-      return;
+      try {
+        await _connectCompleter!.future.timeout(const Duration(seconds: 15));
+      } catch (_) {}
+      if (_socketReady && _socket != null) return;
     }
-    await _connectSocket();
-    if (_connectCompleter != null) {
-      await _connectCompleter!.future.timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {},
-      );
+
+    if (!_socketReady && !_connecting) {
+      await _connectSocket();
+    }
+    if (_connectCompleter != null && !(_connectCompleter!.isCompleted)) {
+      try {
+        await _connectCompleter!.future.timeout(const Duration(seconds: 15));
+      } catch (_) {}
     }
   }
 
@@ -136,13 +150,12 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
       await _socket?.sink.close();
     } catch (_) {}
     _socket = null;
+    state = state.copyWith(socketConnected: false);
 
     try {
       final ticket = await _chatService.getWsTicket();
       if (ticket == null || ticket.isEmpty) {
-        if (kDebugMode) {
-          debugPrint('[CallWS] Missing WS ticket — cannot connect');
-        }
+        if (kDebugMode) debugPrint('[CallWS] Missing WS ticket');
         if (!(_connectCompleter?.isCompleted ?? true)) {
           _connectCompleter!.completeError(StateError('missing ws ticket'));
         }
@@ -151,10 +164,17 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
       }
 
       final url = '${AppConstants.wsBase}/call/?ticket=$ticket';
-      if (kDebugMode) debugPrint('[CallWS] Connecting to $url');
+      if (kDebugMode) debugPrint('[CallWS] Connecting…');
 
-      _socket = WebSocketChannel.connect(Uri.parse(url));
+      final ws = await WebSocket.connect(
+        url,
+        headers: {'Origin': AppConstants.wsOrigin},
+      ).timeout(
+        const Duration(seconds: 15),
+      );
+      _socket = IOWebSocketChannel(ws);
       _socketReady = true;
+      state = state.copyWith(socketConnected: true);
       _flushOutgoingQueue();
 
       if (state.uiState != CallUiState.idle &&
@@ -216,6 +236,7 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
   void _markSocketDisconnected() {
     _socketReady = false;
     _socket = null;
+    state = state.copyWith(socketConnected: false);
   }
 
   void _scheduleReconnect() {
@@ -234,11 +255,6 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
       return;
     }
     _outgoingQueue.add(payload);
-    if (kDebugMode) {
-      debugPrint(
-        '[CallWS] Queued ${payload['action'] ?? payload['type']} (socket not ready)',
-      );
-    }
     if (!_connecting) unawaited(ensureConnected());
   }
 
@@ -250,7 +266,6 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
         debugPrint('[CallWS] → ${payload['action'] ?? payload['type']}');
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('[CallWS] Send failed: $e');
       _outgoingQueue.add(payload);
       _markSocketDisconnected();
       _scheduleReconnect();
@@ -295,107 +310,125 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
     ];
   }
 
-  Future<void> startOutgoingCall({
+  /// Mirrors web `initiateCall`: connect → media → initiate (no PC yet).
+  Future<CallStartResult> startOutgoingCall({
     required String calleeId,
     required String calleeLabel,
     required String callType,
   }) async {
-    if (state.uiState != CallUiState.idle) return;
+    try {
+      if (state.uiState != CallUiState.idle) {
+        await _resetCallState();
+      }
 
-    await ensureConnected();
-    if (!_socketReady) {
+      await ensureConnected();
+      if (!_socketReady) {
+        const msg = 'Call service unavailable. Check your connection.';
+        state = state.copyWith(statusMessage: msg);
+        return const CallStartResult(success: false, error: msg);
+      }
+
+      final apiCallType = _displayCallType(callType);
+      final needsVideo = _needsVideo(apiCallType);
+      if (!await _ensurePermissions(needsVideo: needsVideo)) {
+        const msg = 'Microphone/camera permission is required for calls.';
+        state = state.copyWith(statusMessage: msg);
+        return const CallStartResult(success: false, error: msg);
+      }
+
+      _isInitiator = true;
+      _pendingIceCandidates.clear();
+      _telemetry = CallTelemetry();
+
       state = state.copyWith(
-        statusMessage: 'Call service unavailable — reconnecting…',
+        uiState: CallUiState.outgoing,
+        callType: apiCallType,
+        remoteLabel: calleeLabel,
+        statusMessage: 'Ringing…',
+        clearIncoming: true,
       );
-      return;
+
+      await _setupLocalMedia(needsVideo: needsVideo);
+
+      if (!_socketReady) {
+        await _resetCallState();
+        const msg = 'Call socket disconnected. Try again.';
+        state = state.copyWith(statusMessage: msg);
+        return const CallStartResult(success: false, error: msg);
+      }
+
+      _send({
+        'action': 'initiate',
+        'callee_id': calleeId,
+        'call_type': apiCallType,
+      });
+
+      return const CallStartResult(success: true);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Call] startOutgoingCall failed: $e');
+      await _resetCallState();
+      final msg = 'Could not start call: $e';
+      state = state.copyWith(statusMessage: msg);
+      return CallStartResult(success: false, error: msg);
     }
-
-    final normalizedType = _normalizeCallType(callType);
-    final needsVideo = _needsVideo(normalizedType);
-    if (!await _ensurePermissions(needsVideo: needsVideo)) {
-      state = state.copyWith(
-        statusMessage: 'Microphone/camera permission required',
-      );
-      return;
-    }
-
-    _isInitiator = true;
-    _pendingIceCandidates.clear();
-    state = state.copyWith(
-      uiState: CallUiState.outgoing,
-      callType: normalizedType,
-      remoteLabel: calleeLabel,
-      statusMessage: 'Ringing…',
-      clearIncoming: true,
-    );
-
-    _telemetry = CallTelemetry();
-    await _setupLocalMedia(needsVideo: needsVideo);
-    await _ensurePeerConnection();
-
-    if (!_socketReady) {
-      state = state.copyWith(
-        uiState: CallUiState.idle,
-        statusMessage: 'Call socket disconnected. Try again.',
-      );
-      return;
-    }
-
-    _send({
-      'action': 'initiate',
-      'callee_id': calleeId,
-      'call_type': normalizedType,
-    });
   }
 
-  Future<void> acceptIncoming() async {
-    final incoming = state.incoming;
-    if (incoming == null) return;
+  Future<CallStartResult> acceptIncoming() async {
+    try {
+      final incoming = state.incoming;
+      if (incoming == null) {
+        return const CallStartResult(success: false, error: 'No incoming call');
+      }
 
-    await ensureConnected();
-    if (!_socketReady) {
+      await ensureConnected();
+      if (!_socketReady) {
+        const msg = 'Call service unavailable. Check your connection.';
+        state = state.copyWith(statusMessage: msg);
+        return const CallStartResult(success: false, error: msg);
+      }
+
+      final apiCallType = _displayCallType(incoming.callType);
+      final needsVideo = _needsVideo(apiCallType);
+      if (!await _ensurePermissions(needsVideo: needsVideo)) {
+        const msg = 'Microphone/camera permission is required.';
+        return const CallStartResult(success: false, error: msg);
+      }
+
+      _isInitiator = false;
+      _pendingIceCandidates.clear();
+      _telemetry = CallTelemetry()..begin(callSessionId: incoming.callId);
+
       state = state.copyWith(
-        statusMessage: 'Call service unavailable — reconnecting…',
+        uiState: CallUiState.outgoing,
+        activeCallId: incoming.callId,
+        callType: apiCallType,
+        remoteLabel: incoming.callerLabel,
+        statusMessage: 'Connecting…',
+        clearIncoming: true,
       );
-      return;
+
+      await _setupLocalMedia(needsVideo: needsVideo);
+      _send({'action': 'accept', 'call_id': incoming.callId});
+
+      return const CallStartResult(success: true);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Call] acceptIncoming failed: $e');
+      await _resetCallState();
+      return CallStartResult(success: false, error: 'Could not accept call: $e');
     }
-
-    final normalizedType = _normalizeCallType(incoming.callType);
-    final needsVideo = _needsVideo(normalizedType);
-    if (!await _ensurePermissions(needsVideo: needsVideo)) return;
-
-    _isInitiator = false;
-    _pendingIceCandidates.clear();
-    state = state.copyWith(
-      uiState: CallUiState.active,
-      activeCallId: incoming.callId,
-      callType: normalizedType,
-      remoteLabel: incoming.callerLabel,
-      statusMessage: 'Connecting…',
-      clearIncoming: true,
-    );
-
-    _telemetry = CallTelemetry()..begin(callSessionId: incoming.callId);
-    await _setupLocalMedia(needsVideo: needsVideo);
-    await _ensurePeerConnection();
-
-    _send({'action': 'accept', 'call_id': incoming.callId});
   }
 
   void declineIncoming() {
-    final callId = state.incoming?.callId;
-    if (callId != null) {
-      _send({'action': 'end', 'call_id': callId});
-    }
-    state = state.copyWith(uiState: CallUiState.idle, clearIncoming: true);
+    _send({'action': 'end'});
+    unawaited(_resetCallState());
   }
 
   Future<void> hangUp() async {
     if (_endingCall) return;
     _endingCall = true;
     final callId = state.activeCallId ?? state.incoming?.callId;
+    _send({'action': 'end'});
     if (callId != null) {
-      _send({'action': 'end', 'call_id': callId});
       await _telemetry?.submit(callSessionId: callId);
     }
     await _resetCallState();
@@ -404,12 +437,16 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
 
   Future<void> _resetCallState({bool keepSocket = true}) async {
     _pendingIceCandidates.clear();
+    _settingUpPeer = false;
     await _cleanupMedia(keepSocket: keepSocket);
-    state = const CallManagerState(uiState: CallUiState.idle);
+    state = CallManagerState(
+      uiState: CallUiState.idle,
+      socketConnected: state.socketConnected,
+    );
   }
 
   Future<void> _setupLocalMedia({required bool needsVideo}) async {
-    await _releaseMediaTracks();
+    await _releaseMediaTracks(keepPc: true);
     final stream = await navigator.mediaDevices.getUserMedia({
       'audio': true,
       'video': needsVideo
@@ -423,54 +460,70 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
     state = state.copyWith(localStream: stream);
   }
 
-  Future<void> _ensurePeerConnection() async {
-    if (_pc != null) return;
-    final iceServers = await _iceServers();
-    _pc = await createPeerConnection({'iceServers': iceServers});
+  Future<void> _setupPeerConnectionIfNeeded() async {
+    if (_pc != null || _settingUpPeer) return;
+    _settingUpPeer = true;
+    try {
+      final iceServers = await _iceServers();
+      _pc = await createPeerConnection({'iceServers': iceServers});
 
-    final local = state.localStream;
-    if (local != null) {
-      for (final track in local.getTracks()) {
-        await _pc!.addTrack(track, local);
+      final local = state.localStream;
+      if (local != null) {
+        for (final track in local.getTracks()) {
+          await _pc!.addTrack(track, local);
+        }
       }
+
+      _telemetry?.bindPeerConnection(_pc!);
+
+      _pc!.onIceCandidate = (c) {
+        _telemetry?.onLocalIceCandidate(c.candidate);
+        if (c.candidate == null) return;
+        if (c.candidate!.contains('typ relay')) {
+          _telemetry?.markTurnFallback();
+        }
+        final callId = state.activeCallId;
+        if (callId == null) {
+          _pendingIceCandidates.add(c);
+          return;
+        }
+        _sendIceCandidate(callId, c);
+      };
+
+      _pc!.onIceConnectionState = (iceState) {
+        unawaited(_telemetry?.onIceConnectionState(iceState));
+      };
+
+      _pc!.onConnectionState = (connState) {
+        _telemetry?.onPeerConnectionState(connState);
+      };
+
+      _pc!.onTrack = (event) {
+        if (event.streams.isEmpty) return;
+        state = state.copyWith(
+          remoteStream: event.streams.first,
+          statusMessage: 'Connected',
+          uiState: CallUiState.active,
+        );
+        final callId = state.activeCallId;
+        if (callId != null) {
+          _send({'action': 'media_connected', 'call_id': callId});
+        }
+      };
+
+      if (_isInitiator && state.activeCallId != null) {
+        final offer = await _pc!.createOffer();
+        _telemetry?.markOfferCreated();
+        await _pc!.setLocalDescription(offer);
+        _send({
+          'action': 'offer',
+          'call_id': state.activeCallId,
+          'sdp': offer.sdp,
+        });
+      }
+    } finally {
+      _settingUpPeer = false;
     }
-
-    _telemetry?.bindPeerConnection(_pc!);
-
-    _pc!.onIceCandidate = (c) {
-      _telemetry?.onLocalIceCandidate(c.candidate);
-      if (c.candidate == null) return;
-      if (c.candidate!.contains('typ relay')) {
-        _telemetry?.markTurnFallback();
-      }
-      final callId = state.activeCallId;
-      if (callId == null) {
-        _pendingIceCandidates.add(c);
-        return;
-      }
-      _sendIceCandidate(callId, c);
-    };
-
-    _pc!.onIceConnectionState = (iceState) {
-      unawaited(_telemetry?.onIceConnectionState(iceState));
-    };
-
-    _pc!.onConnectionState = (connState) {
-      _telemetry?.onPeerConnectionState(connState);
-    };
-
-    _pc!.onTrack = (event) {
-      if (event.streams.isEmpty) return;
-      state = state.copyWith(
-        remoteStream: event.streams.first,
-        statusMessage: 'Connected',
-        uiState: CallUiState.active,
-      );
-      final callId = state.activeCallId;
-      if (callId != null) {
-        _send({'action': 'media_connected', 'call_id': callId});
-      }
-    };
   }
 
   Future<void> _onSocketMessage(Map<String, dynamic> data) async {
@@ -483,14 +536,20 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
       state = CallManagerState(
         uiState: CallUiState.idle,
         statusMessage: message,
+        socketConnected: state.socketConnected,
       );
       return;
     }
 
     if (type == 'call.incoming') {
-      if (state.uiState != CallUiState.idle) return;
-      final incomingType = _normalizeCallType(
-        data['call_type']?.toString() ?? 'VOICE',
+      if (state.uiState != CallUiState.idle) {
+        if (kDebugMode) {
+          debugPrint('[CallWS] Ignoring incoming — state=${state.uiState}');
+        }
+        return;
+      }
+      final incomingType = _displayCallType(
+        data['call_type']?.toString() ?? 'voice',
       );
       state = state.copyWith(
         uiState: CallUiState.incoming,
@@ -500,7 +559,9 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
           callerLabel: data['caller_email']?.toString() ?? 'Someone',
           callType: incomingType,
         ),
+        statusMessage: 'Incoming call',
       );
+      if (kDebugMode) debugPrint('[CallWS] ← call.incoming');
       return;
     }
 
@@ -527,28 +588,21 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
         _telemetry!.begin(callSessionId: callId);
         AnalyticsService.instance.trackCallStarted(
           callId: callId,
-          callType: state.callType ?? 'VOICE',
+          callType: state.callType ?? 'voice',
         );
         await _flushPendingIce(callId);
       }
-      if (_isInitiator && _pc != null && callId != null) {
-        final offer = await _pc!.createOffer();
-        _telemetry?.markOfferCreated();
-        await _pc!.setLocalDescription(offer);
-        _send({
-          'action': 'offer',
-          'call_id': callId,
-          'sdp': offer.sdp,
-        });
-      }
+      await _setupPeerConnectionIfNeeded();
       return;
     }
 
-    if (type == 'offer' && _pc != null) {
+    if (type == 'offer') {
       final callId = data['call_id']?.toString();
       if (callId != null) {
         state = state.copyWith(activeCallId: callId, uiState: CallUiState.active);
       }
+      await _setupPeerConnectionIfNeeded();
+      if (_pc == null) return;
       await _pc!.setRemoteDescription(
         RTCSessionDescription(
           data['sdp']?.toString(),
@@ -578,7 +632,6 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
 
     if (type == 'ice_candidate' && _pc != null) {
       final candidate = data['candidate'];
-      if (candidate == null) return;
       if (candidate is Map) {
         final line = candidate['candidate']?.toString();
         if (line == null || line.isEmpty) return;
@@ -636,9 +689,11 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
     }
   }
 
-  Future<void> _releaseMediaTracks() async {
-    await _pc?.close();
-    _pc = null;
+  Future<void> _releaseMediaTracks({bool keepPc = false}) async {
+    if (!keepPc) {
+      await _pc?.close();
+      _pc = null;
+    }
     final local = state.localStream;
     if (local != null) {
       for (final t in local.getTracks()) {
@@ -661,21 +716,7 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
     _telemetry = null;
     await _pc?.close();
     _pc = null;
-    final local = state.localStream;
-    if (local != null) {
-      for (final t in local.getTracks()) {
-        await t.stop();
-      }
-      await local.dispose();
-    }
-    final remote = state.remoteStream;
-    if (remote != null) {
-      for (final t in remote.getTracks()) {
-        await t.stop();
-      }
-      await remote.dispose();
-    }
-    state = state.copyWith(clearStreams: true);
+    await _releaseMediaTracks();
     if (!keepSocket) {
       _isInitiator = false;
     }

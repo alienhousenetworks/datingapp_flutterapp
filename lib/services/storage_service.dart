@@ -3,9 +3,7 @@ import '../core/constants.dart';
 import 'package:uuid/uuid.dart';
 
 class StorageService {
-  static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  static const _storage = FlutterSecureStorage();
 
   // ─── Token Management ────────────────────────────────────
   static Future<void> saveTokens({

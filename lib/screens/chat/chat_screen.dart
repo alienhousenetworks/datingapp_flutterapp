@@ -258,49 +258,48 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _startCall(String callType) async {
-    final otherId = await _resolveOtherUserId();
-    if (otherId == null || otherId.isEmpty) {
+    try {
+      final otherId = await _resolveOtherUserId();
+      if (otherId == null || otherId.isEmpty) {
+        if (!mounted) return;
+        _showCallSnack('Cannot start call — user id unavailable.');
+        return;
+      }
+
+      final result = await ref.read(callManagerProvider.notifier).startOutgoingCall(
+            calleeId: otherId,
+            calleeLabel: widget.otherUsername,
+            callType: callType,
+          );
+
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Cannot start call — user id unavailable.',
-            style: GoogleFonts.outfit(),
+
+      if (!result.success) {
+        _showCallSnack(result.error ?? 'Could not start call.');
+        return;
+      }
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CallScreen(
+            otherUserId: otherId,
+            otherUsername: widget.otherUsername,
+            callType: callType,
           ),
-          backgroundColor: const Color(0xFF1E1E1E),
         ),
       );
-      return;
+    } catch (e) {
+      if (!mounted) return;
+      _showCallSnack('Call failed: $e');
     }
+  }
 
-    await ref.read(callManagerProvider.notifier).startOutgoingCall(
-          calleeId: otherId,
-          calleeLabel: widget.otherUsername,
-          callType: callType,
-        );
-
-    if (!mounted) return;
-    final callState = ref.read(callManagerProvider);
-    if (callState.uiState == CallUiState.idle &&
-        callState.statusMessage != null &&
-        callState.statusMessage!.contains('unavailable')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(callState.statusMessage!, style: GoogleFonts.outfit()),
-          backgroundColor: const Color(0xFF1E1E1E),
-        ),
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CallScreen(
-          otherUserId: otherId,
-          otherUsername: widget.otherUsername,
-          callType: callType,
-        ),
+  void _showCallSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: GoogleFonts.outfit()),
+        backgroundColor: const Color(0xFF1E1E1E),
       ),
     );
   }

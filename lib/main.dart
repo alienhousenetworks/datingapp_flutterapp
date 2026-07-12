@@ -80,17 +80,21 @@ class _AppRouterState extends ConsumerState<_AppRouter> {
   }
 
   Future<void> _resolveInitialRoute() async {
-    final loggedIn = await StorageService.isLoggedIn();
-    if (!mounted) return;
-
-    if (loggedIn) {
-      final route = await _routeAfterAuthentication();
+    try {
+      final loggedIn = await StorageService.isLoggedIn();
       if (!mounted) return;
-      setState(() {
-        _currentRoute = route;
-        _initialized = true;
-      });
-      return;
+
+      if (loggedIn) {
+        final route = await _routeAfterAuthentication();
+        if (!mounted) return;
+        setState(() {
+          _currentRoute = route;
+          _initialized = true;
+        });
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error resolving initial route: $e');
     }
 
     setState(() => _initialized = true);
