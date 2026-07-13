@@ -496,7 +496,7 @@ class _HeroPageState extends State<_HeroPage> {
             text: 'SWIPE FOR PHOTOS →',
             color: widget.theme.textColor.withOpacity(0.7),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 220),
         ],
       ),
     );
@@ -828,7 +828,7 @@ class _CharacterHeroPage extends StatelessWidget {
             text: 'SWIPE FOR DETAILS →',
             color: theme.textColor.withOpacity(0.7),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 220),
         ],
       ),
     );
@@ -942,7 +942,7 @@ class _DetailsPage extends StatelessWidget {
             text: 'SWIPE FOR TURN-ONS →',
             color: textColor,
           ),
-          const SizedBox(height: 60),
+          const SizedBox(height: 220),
         ],
       ),
     );
@@ -1044,7 +1044,7 @@ class _TurnOnsPage extends StatelessWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 220),
         ],
       ),
     );
