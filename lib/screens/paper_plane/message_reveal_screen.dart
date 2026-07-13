@@ -4,47 +4,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../providers/paper_plane_provider.dart';
 import '../../widgets/confetti_connect_widget.dart';
-
-// ─────────────────────────────────────────────────────────────
-// Message Reveal Screen
-// Shown after the net catches the plane.
-// Displays: sender info + message + 3-min countdown + Connect/Pass
-// ─────────────────────────────────────────────────────────────
 
 class MessageRevealScreen extends ConsumerStatefulWidget {
   const MessageRevealScreen({super.key});
 
   @override
-  ConsumerState<MessageRevealScreen> createState() =>
-      _MessageRevealScreenState();
+  ConsumerState<MessageRevealScreen> createState() => _MessageRevealScreenState();
 }
 
 class _MessageRevealScreenState extends ConsumerState<MessageRevealScreen>
     with TickerProviderStateMixin {
-  // ── Reveal animation ──
-  late AnimationController _revealController;
-  late Animation<double> _scaleFade;
-
   // ── Circular countdown ──
   late Timer _timer;
   int _secondsLeft = 180; // 3 min — overridden by decisionDeadline from server
   bool _isActing = false;
 
+  // ── Chili Reveal & Letter animations ──
+  bool _chiliOpened = false;
+  bool _showSuccessOverlay = false;
+  bool _isFlyAwayAnimActive = false;
+
+  late AnimationController _chiliSplitController;
+  late Animation<double> _chiliSplitProgress;
+
+  late AnimationController _pulseController;
+  late AnimationController _vibrateController;
+  late AnimationController _floatController;
+  late AnimationController _flyAwayController;
+
   @override
   void initState() {
     super.initState();
-
-    _revealController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _scaleFade = CurvedAnimation(
-      parent: _revealController,
-      curve: Curves.elasticOut,
-    );
-    _revealController.forward();
 
     // Compute remaining seconds from server deadline
     final result = ref.read(catchGameProvider).catchResult;
@@ -54,6 +48,36 @@ class _MessageRevealScreenState extends ConsumerState<MessageRevealScreen>
     }
 
     _startTimer();
+
+    // ── Animation Controllers ──
+    _chiliSplitController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _chiliSplitProgress = CurvedAnimation(
+      parent: _chiliSplitController,
+      curve: Curves.easeOutCubic,
+    );
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _vibrateController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+
+    _floatController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat(reverse: true);
+
+    _flyAwayController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
   }
 
   void _startTimer() {
@@ -83,7 +107,7 @@ class _MessageRevealScreenState extends ConsumerState<MessageRevealScreen>
 
   Future<void> _onConnect() async {
     if (_isActing) return;
-    _isActing = true;
+    setState(() => _isActing = true);
     _timer.cancel();
     HapticFeedback.heavyImpact();
 
@@ -92,9 +116,12 @@ class _MessageRevealScreenState extends ConsumerState<MessageRevealScreen>
 
     final state = ref.read(catchGameProvider);
     if (state.phase == GamePhase.connected && state.conversationId != null) {
-      _showConnectedOverlay(state.conversationId!);
+      setState(() {
+        _showSuccessOverlay = true;
+      });
     } else {
-      _isActing = false;
+      setState(() => _isActing = false);
+      _startTimer(); // resume timer
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Something went wrong. Try again.'),
@@ -106,39 +133,28 @@ class _MessageRevealScreenState extends ConsumerState<MessageRevealScreen>
 
   Future<void> _onPass() async {
     if (_isActing) return;
-    _isActing = true;
+    setState(() => _isActing = true);
     _timer.cancel();
     HapticFeedback.mediumImpact();
 
-    await ref.read(catchGameProvider.notifier).pass();
-    if (mounted) {
-      _showPassedSheet();
-    }
-  }
+    setState(() {
+      _isFlyAwayAnimActive = true;
+    });
 
-  void _showConnectedOverlay(String conversationId) {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black87,
-      transitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (_, __, ___) => _ConnectedOverlay(
-        conversationId: conversationId,
-        onOpenChat: () {
-          Navigator.of(context).pop();
-          ref.read(catchGameProvider.notifier).reset();
-          context.go('/chat/$conversationId');
-        },
-      ),
-    );
+    _flyAwayController.forward().then((_) async {
+      await ref.read(catchGameProvider.notifier).pass();
+      if (mounted) {
+        _showPassedSheet();
+      }
+    });
   }
 
   void _showPassedSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: const Color(0xFF161616),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(28),
@@ -194,7 +210,10 @@ class _MessageRevealScreenState extends ConsumerState<MessageRevealScreen>
         ),
       ),
     ).then((_) {
-      if (mounted) context.go('/');
+      if (mounted) {
+        ref.read(catchGameProvider.notifier).reset();
+        context.go('/');
+      }
     });
   }
 
@@ -209,146 +228,556 @@ class _MessageRevealScreenState extends ConsumerState<MessageRevealScreen>
   }
 
   String get _timerLabel {
-    final m = _secondsLeft ~/ 60;
-    final s = _secondsLeft % 60;
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-  }
-
-  Color get _timerColor {
-    if (_secondsLeft > 60) return const Color(0xFF4CAF50);
-    if (_secondsLeft > 20) return Colors.orange;
-    return Colors.red;
+    return '${_secondsLeft}s';
   }
 
   @override
   void dispose() {
-    _revealController.dispose();
     _timer.cancel();
+    _chiliSplitController.dispose();
+    _pulseController.dispose();
+    _vibrateController.dispose();
+    _floatController.dispose();
+    _flyAwayController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final result = ref.watch(catchGameProvider).catchResult;
+    final size = MediaQuery.of(context).size;
+    final gameState = ref.watch(catchGameProvider);
+    final result = gameState.catchResult;
+
     if (result == null) {
       return const Scaffold(
         backgroundColor: Color(0xFF0C0C0C),
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFFFF2E74))),
       );
     }
 
+    // Fly-away animations transformation details
+    final double flyX = _flyAwayController.value * size.width;
+    final double flyY = -_flyAwayController.value * size.height;
+    final double flyScale = 1.0 - _flyAwayController.value * 0.9;
+    final double flyRotation = _flyAwayController.value * 0.8;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0C0C0C),
-      body: SafeArea(
-        child: ScaleTransition(
-          scale: _scaleFade,
-          child: Column(
-            children: [
-              // ── Header ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFF2E74), Color(0xFFFF6B35)],
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Text('✈️', style: TextStyle(fontSize: 22)),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${result.senderFirstName}, ${result.senderAge ?? '?'}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            '📍 ${result.senderCity.isNotEmpty ? result.senderCity : 'Unknown city'}',
-                            style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Sticker badge
-                    if (result.sticker.isNotEmpty)
-                      Text(result.sticker,
-                          style: const TextStyle(fontSize: 32)),
+      body: Stack(
+        children: [
+          // ── Background Atmospheric Layer ──
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF0A0A1A),
+                    Color(0xFF140E2A),
+                    Color(0xFF261033),
                   ],
                 ),
               ),
+            ),
+          ),
 
-              const SizedBox(height: 32),
+          // Cosmic Sky Lights overlay
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.15,
+              child: Image.network(
+                'https://www.transparenttextures.com/patterns/dust.png',
+                repeat: ImageRepeat.repeat,
+              ),
+            ),
+          ),
 
-              // ── Message card ──
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A1A1A),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: const Color(0xFFFF2E74).withOpacity(0.3),
-                        width: 1,
+          // ── App Header ──
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                      onPressed: () {
+                        if (!_chiliOpened) {
+                          context.go('/');
+                        } else {
+                          _onPass();
+                        }
+                      },
+                    ),
+                    Text(
+                      'Paper Planes',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.5,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFF2E74).withOpacity(0.08),
-                          blurRadius: 30,
-                          spreadRadius: 5,
+                    ),
+                    const SizedBox(width: 48), // Spacer to balance
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ── Main Content Area ──
+          Positioned.fill(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 60),
+
+                // ── Progress countdown ──
+                if (_chiliOpened) ...[
+                  SizedBox(
+                    width: 72,
+                    height: 72,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          value: _secondsLeft / 180.0,
+                          strokeWidth: 3.5,
+                          backgroundColor: Colors.white.withOpacity(0.12),
+                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF8C61)),
+                        ),
+                        Text(
+                          _timerLabel,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'EXPIRES SOON',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white.withOpacity(0.4),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // ── Centered Card / Chili View ──
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: AnimatedBuilder(
+                        animation: Listenable.merge([
+                          _chiliSplitController,
+                          _pulseController,
+                          _floatController,
+                          _flyAwayController
+                        ]),
+                        builder: (context, _) {
+                          if (!_chiliOpened) {
+                            // Pulsing closed chili state
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Transform.scale(
+                                  scale: 1.0 + 0.05 * _pulseController.value,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.red.withOpacity(0.35 * _pulseController.value),
+                                          blurRadius: 40,
+                                          spreadRadius: 10,
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Text('🌶️', style: TextStyle(fontSize: 96)),
+                                  ),
+                                ),
+                                const SizedBox(height: 40),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    HapticFeedback.heavyImpact();
+                                    _vibrateController.repeat(max: 1.0);
+                                    Future.delayed(const Duration(milliseconds: 300), () {
+                                      _vibrateController.stop();
+                                      _chiliSplitController.forward().then((_) {
+                                        setState(() => _chiliOpened = true);
+                                      });
+                                    });
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFFF2E74),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
+                                    elevation: 10,
+                                    shadowColor: const Color(0xFFFF2E74).withOpacity(0.4),
+                                  ),
+                                  child: Text(
+                                    '🔥 Open Chili',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+
+                          // Split Chili halves flying apart before fully open
+                          if (_chiliSplitController.value < 1.0) {
+                            final splitVal = _chiliSplitProgress.value;
+                            return Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Transform.translate(
+                                  offset: Offset(-80 * splitVal, 0),
+                                  child: Transform.rotate(
+                                    angle: -0.2 * splitVal,
+                                    child: const Text('🌶️', style: TextStyle(fontSize: 96)),
+                                  ),
+                                ),
+                                Transform.translate(
+                                  offset: Offset(80 * splitVal, 0),
+                                  child: Transform.rotate(
+                                    angle: 0.2 * splitVal,
+                                    child: const Text('🌶️', style: TextStyle(fontSize: 96)),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+
+                          // Revealed paper letter with slight tilt and floating action
+                          final double floatVal = math.sin(_floatController.value * 2 * math.pi) * 8;
+                          
+                          return Transform.translate(
+                            offset: Offset(floatVal + (isClosed ? 0 : flyX), floatVal + (isClosed ? 0 : flyY)),
+                            child: Transform.scale(
+                              scale: isClosed ? 1.0 : flyScale,
+                              child: Transform.rotate(
+                                angle: -0.02 + (isClosed ? 0 : flyRotation),
+                                child: Container(
+                                  width: math.min(size.width * 0.9, 440),
+                                  padding: const EdgeInsets.all(32),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.18),
+                                        blurRadius: 40,
+                                        offset: const Offset(0, 15),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Sender Header Info
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 48,
+                                            height: 48,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(color: Colors.white, width: 2),
+                                              boxShadow: const [
+                                                BoxShadow(color: Colors.black12, blurRadius: 4),
+                                              ],
+                                              image: const DecorationImage(
+                                                image: NetworkImage(
+                                                  'https://lh3.googleusercontent.com/aida-public/AB6AXuCHlRaQ9tyeV_2ieiex_Xsw8vzJXV4oGNomI5ayrQmaT75A7TLKexqpTD0kyvSG1zHvEX8KEzGK7_xJcS0lm9SUwSTK16AqeLmFUfIJ8otWHh4kj-J1jVbgwYAxdtdHWmCMvv0gjGxa8rgGAZphd0u0fJvdDOtJ4oAZgUgyj0VO4Ebgu9A6IEzkQmJgdg6_0O1YB2YR5DdB_mkWyPhq80UzuWifCo2bCLEawpH7taRxkY3McCOcu1nlRhP30p0jKfYIu7GuaL2wS_MC',
+                                                ),
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 14),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'A message from the sky',
+                                                  style: GoogleFonts.plusJakartaSans(
+                                                    color: const Color(0xFF181C1F),
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                    letterSpacing: -0.2,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  'Sent by ${result.senderFirstName}, ${result.senderAge ?? "?"} • 📍 ${result.senderCity.isNotEmpty ? result.senderCity : "Unknown Location"}',
+                                                  style: GoogleFonts.plusJakartaSans(
+                                                    color: const Color(0xFF40484F),
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (result.sticker.isNotEmpty)
+                                            Text(result.sticker, style: const TextStyle(fontSize: 28)),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Container(
+                                        height: 1,
+                                        color: const Color(0xFFE0E3E7).withOpacity(0.5),
+                                      ),
+                                      const SizedBox(height: 24),
+
+                                      // The Message Text
+                                      Stack(
+                                        children: [
+                                          Opacity(
+                                            opacity: 0.08,
+                                            child: Text(
+                                              '“',
+                                              style: GoogleFonts.plusJakartaSans(
+                                                color: const Color(0xFF00658f),
+                                                fontSize: 64,
+                                                fontWeight: FontWeight.w800,
+                                                height: 0.8,
+                                              ),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 8, left: 8),
+                                            child: Text(
+                                              result.message,
+                                              style: GoogleFonts.plusJakartaSans(
+                                                color: const Color(0xFF181C1F).withOpacity(0.95),
+                                                fontSize: 17,
+                                                height: 1.6,
+                                                fontStyle: FontStyle.italic,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 32),
+
+                                      // Grayscale eco illustration at the bottom right
+                                      Align(
+                                        alignment: Alignment.bottomRight,
+                                        child: Opacity(
+                                          opacity: 0.05,
+                                          child: Icon(
+                                            Icons.eco,
+                                            size: 64,
+                                            color: const Color(0xFF181C1F),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+
+                // ── Lower Action Buttons Area ──
+                if (_chiliOpened) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 48),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          '"',
-                          style: TextStyle(
-                            color: const Color(0xFFFF2E74).withOpacity(0.5),
-                            fontSize: 64,
-                            height: 0.8,
-                            fontWeight: FontWeight.bold,
+                        // Primary: Connect Button
+                        Container(
+                          width: double.infinity,
+                          height: 58,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFF8C61), Color(0xFFFF5C00)],
+                            ),
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFFF5C00).withOpacity(0.35),
+                                blurRadius: 15,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: _isActing ? null : _onConnect,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              foregroundColor: Colors.white,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: _isActing
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.favorite_rounded, color: Colors.white),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '❤️ Connect',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 14),
+
+                        // Secondary: Let it Fly Away Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 58,
+                          child: TextButton(
+                            onPressed: _isActing ? null : _onPass,
+                            style: TextButton.styleFrom(
+                              backgroundColor: Colors.white.withOpacity(0.08),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                                side: BorderSide(color: Colors.white.withOpacity(0.15)),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '✈️ Let it Fly Away',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 160), // spacer balance
+                ]
+              ],
+            ),
+          ),
+
+          // ── Connection Success Overlay ──
+          if (_showSuccessOverlay)
+            Positioned.fill(
+              child: ConfettiConnectWidget(
+                startTrigger: true,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFFFF8C61), Color(0xFFFFD700)],
+                    ),
+                  ),
+                  child: SafeArea(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.auto_awesome_rounded, size: 96, color: Colors.white),
+                        const SizedBox(height: 24),
                         Text(
-                          result.message,
-                          style: const TextStyle(
+                          "It's a Connection!",
+                          style: GoogleFonts.plusJakartaSans(
                             color: Colors.white,
-                            fontSize: 18,
-                            height: 1.6,
-                            fontWeight: FontWeight.w400,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
                           ),
                         ),
-                        const Spacer(),
-                        Align(
-                          alignment: Alignment.bottomRight,
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 48),
                           child: Text(
-                            '"',
-                            style: TextStyle(
-                              color: const Color(0xFFFF2E74).withOpacity(0.5),
-                              fontSize: 64,
-                              height: 0.8,
-                              fontWeight: FontWeight.bold,
+                            "Your paper plane has landed safely. Start the conversation now.",
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 16,
+                              height: 1.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 48),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 60,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                final state = ref.read(catchGameProvider);
+                                ref.read(catchGameProvider.notifier).reset();
+                                if (state.conversationId != null) {
+                                  context.go('/chat/${state.conversationId}');
+                                } else {
+                                  context.go('/');
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: const Color(0xFFFF5C00),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                elevation: 5,
+                              ),
+                              child: Text(
+                                'Open Chat →',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -357,262 +786,11 @@ class _MessageRevealScreenState extends ConsumerState<MessageRevealScreen>
                   ),
                 ),
               ),
-
-              const SizedBox(height: 28),
-
-              // ── Timer ──
-              _CircularCountdown(
-                secondsLeft: _secondsLeft,
-                totalSeconds: 180,
-                label: _timerLabel,
-                color: _timerColor,
-              ),
-
-              const SizedBox(height: 28),
-
-              // ── Action buttons ──
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    // PASS button
-                    Expanded(
-                      child: SizedBox(
-                        height: 56,
-                        child: OutlinedButton(
-                          onPressed: _isActing ? null : _onPass,
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(
-                                color: Colors.white24, width: 1.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: const Text(
-                            '❌  Pass',
-                            style: TextStyle(
-                              color: Colors.white60,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // CONNECT button
-                    Expanded(
-                      flex: 2,
-                      child: SizedBox(
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: _isActing ? null : _onConnect,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF2E74),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 8,
-                            shadowColor:
-                                const Color(0xFFFF2E74).withOpacity(0.4),
-                          ),
-                          child: _isActing
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text(
-                                  '✅  Connect',
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Circular Countdown Widget ────────────────────────────────
-class _CircularCountdown extends StatelessWidget {
-  final int secondsLeft;
-  final int totalSeconds;
-  final String label;
-  final Color color;
-
-  const _CircularCountdown({
-    required this.secondsLeft,
-    required this.totalSeconds,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = secondsLeft / totalSeconds;
-    return SizedBox(
-      width: 88,
-      height: 88,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          SizedBox.expand(
-            child: CircularProgressIndicator(
-              value: progress,
-              strokeWidth: 5,
-              backgroundColor: Colors.white12,
-              valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-              Text(
-                'to decide',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.4),
-                  fontSize: 9,
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
   }
-}
 
-// ─── Connected Overlay ────────────────────────────────────────
-class _ConnectedOverlay extends StatefulWidget {
-  final String conversationId;
-  final VoidCallback onOpenChat;
-
-  const _ConnectedOverlay({
-    required this.conversationId,
-    required this.onOpenChat,
-  });
-
-  @override
-  State<_ConnectedOverlay> createState() => _ConnectedOverlayState();
-}
-
-class _ConnectedOverlayState extends State<_ConnectedOverlay>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700));
-    _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
-    _ctrl.forward();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: ScaleTransition(
-        scale: _scale,
-        child: ConfettiConnectWidget(
-          startTrigger: true,
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 32),
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A1A1A),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: const Color(0xFFFF2E74).withOpacity(0.5),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFF2E74).withOpacity(0.2),
-                  blurRadius: 40,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('🎉', style: TextStyle(fontSize: 60)),
-                const SizedBox(height: 16),
-                const Text(
-                  'You\'re connected!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'A conversation has been opened.\nStart chatting!',
-                  style:
-                      TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 15),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 28),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: widget.onOpenChat,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF2E74),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Open Chat →',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  bool get isClosed => !_isFlyAwayAnimActive;
 }
