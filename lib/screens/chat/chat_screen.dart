@@ -9,6 +9,7 @@ import '../../providers/profile_provider.dart';
 import '../../providers/call_manager_provider.dart';
 import '../../services/chat_websocket.dart';
 import 'call_screen.dart';
+import '../profile/other_profile_screen.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -304,6 +305,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  Future<void> _viewOtherProfile() async {
+    final otherId = await _resolveOtherUserId();
+    if (otherId == null || otherId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cannot open profile — user ID is missing.', style: GoogleFonts.outfit()),
+          backgroundColor: const Color(0xFF1E1E1E),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OtherProfileScreen(userId: otherId),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -315,25 +337,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
           onPressed: _handleBack,
         ),
-        title: Row(
-          children: [
-            const CircleAvatar(
-              radius: 18,
-              backgroundColor: Color(0xFF1E1E1E),
-              child: Icon(Icons.person, color: Colors.white70, size: 18),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                widget.otherUsername,
-                style: GoogleFonts.outfit(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+        title: GestureDetector(
+          onTap: _viewOtherProfile,
+          behavior: HitTestBehavior.opaque,
+          child: Row(
+            children: [
+              const CircleAvatar(
+                radius: 18,
+                backgroundColor: Color(0xFF1E1E1E),
+                child: Icon(Icons.person, color: Colors.white70, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.otherUsername,
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           IconButton(

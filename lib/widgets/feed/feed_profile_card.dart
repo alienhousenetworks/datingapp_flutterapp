@@ -573,6 +573,28 @@ class _PhotoFocusPageState extends State<_PhotoFocusPage> {
               letterSpacing: 0.5,
             ),
           ),
+          if (widget.profile.city?.isNotEmpty == true) ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.location_on_rounded,
+                  color: widget.theme.accentColor,
+                  size: 14,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  widget.profile.city!,
+                  style: GoogleFonts.outfit(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           Expanded(
             child: Padding(
@@ -876,6 +898,27 @@ class _DetailsPage extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
+          if (profile.city?.isNotEmpty == true) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(
+                  Icons.location_on_rounded,
+                  color: theme.accentColor,
+                  size: 14,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  profile.city!,
+                  style: GoogleFonts.outfit(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 20),
           _DetailBlock(
             label: 'INTENT',
