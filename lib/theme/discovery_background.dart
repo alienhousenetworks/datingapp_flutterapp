@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../models/theme_model.dart';
 import 'alien_house_backgrounds.dart';
@@ -226,6 +227,31 @@ class DiscoveryBackground extends StatelessWidget {
     this.child,
   });
 
+  String _getSvgAssetPath(String id) {
+    return switch (id) {
+      'B01-sunset' => 'assets/svgs/FlameWarm.svg',
+      'B01-ocean' => 'assets/svgs/FlameCool.svg',
+      'B01-midnight' => 'assets/svgs/DarkFlame1.svg',
+      'B02-pink' => 'assets/svgs/PuzzleSplashWarm.svg',
+      'B02-teal' => 'assets/svgs/PuzzleSplashCool.svg',
+      'B02-violet' => 'assets/svgs/PuzzleSplashSpyce.svg',
+      'B03-gold' => 'assets/svgs/HexSplashWarm.svg',
+      'B03-coral' => 'assets/svgs/HexSplashSpyce.svg',
+      'B03-ice' => 'assets/svgs/HexSplashCool.svg',
+      'B04-emerald' => 'assets/svgs/TriSplashCool.svg',
+      'B04-rose' => 'assets/svgs/TriSplashWarm.svg',
+      'B05-slate' => 'assets/svgs/SquareSplashSpyce.svg',
+      'B05-amber' => 'assets/svgs/SquareSplashWarm.svg',
+      'B06-cyan' => 'assets/svgs/FlameCool.svg',
+      'B06-magenta' => 'assets/svgs/FlameSpyce.svg',
+      'B06-lime' => 'assets/svgs/FlameWarm.svg',
+      'B07-peach' => 'assets/svgs/StarSplashWarm.svg',
+      'B07-lavender' => 'assets/svgs/StarSplashCool.svg',
+      'B07-mint' => 'assets/svgs/StarSplashSpyce.svg',
+      _ => 'assets/svgs/FlameWarm.svg',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -234,11 +260,14 @@ class DiscoveryBackground extends StatelessWidget {
         ClipRect(
           child: FittedBox(
             fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
+            alignment: Alignment.center,
             child: SizedBox(
               width: 375,
               height: 812,
-              child: AlienHouseVariantResolver.build(spec),
+              child: SvgPicture.asset(
+                _getSvgAssetPath(spec.variantId),
+                fit: BoxFit.fill,
+              ),
             ),
           ),
         ),

@@ -114,6 +114,36 @@ class PaperPlaneService {
     }
   }
 
+  /// GET /api/v1/paper-plane/sky/
+  Future<List<SkyPlane>> getSkyPlanes() async {
+    try {
+      final response = await _client.get(AppConstants.paperPlaneSky);
+      final data = response.data;
+      if (data is List) {
+        return data
+            .map((e) => SkyPlane.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      throw _parseError(e);
+    }
+  }
+
+  /// POST /api/v1/paper-plane/catch-sky-plane/
+  Future<GameConfig> catchSkyPlane(String planeId) async {
+    try {
+      final response = await _client.post(
+        AppConstants.paperPlaneCatchSkyPlane,
+        data: {'plane_id': planeId},
+      );
+      return GameConfig.fromJson(
+          Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw _parseError(e);
+    }
+  }
+
   String _parseError(DioException e) {
     final data = e.response?.data;
     if (data is Map) {

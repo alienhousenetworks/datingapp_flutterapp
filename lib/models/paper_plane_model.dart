@@ -208,3 +208,27 @@ class GameConfig {
     );
   }
 }
+
+// ─── SkyPlane — plane flying in the sky ───────────────────────
+class SkyPlane {
+  final String id;
+  final String sticker;
+  final double distanceKm;
+  final bool isHighPriority;
+
+  const SkyPlane({
+    required this.id,
+    required this.sticker,
+    required this.distanceKm,
+    required this.isHighPriority,
+  });
+
+  factory SkyPlane.fromJson(Map<String, dynamic> json) {
+    return SkyPlane(
+      id: json['id']?.toString() ?? '',
+      sticker: json['sticker']?.toString() ?? '',
+      distanceKm: (json['distance_km'] as num?)?.toDouble() ?? 0.0,
+      isHighPriority: json['is_high_priority'] as bool? ?? false,
+    );
+  }
+}

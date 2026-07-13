@@ -18,6 +18,7 @@ import '../../utils/option_resolver.dart';
 import '../../utils/profile_completeness.dart';
 import '../../services/verification_service.dart';
 import 'theme_picker_screen.dart';
+import 'my_avatar_screen.dart';
 
 class MyProfileScreen extends ConsumerStatefulWidget {
   const MyProfileScreen({super.key});
@@ -535,6 +536,48 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                         .toList(),
                   ),
           ),
+          // Avatar
+          _SectionHeader('Avatar'),
+          GestureDetector(
+            onTap: _openAvatarPicker,
+            child: _InfoCard(
+              child: Row(
+                children: [
+                  if (profile.avatarUrl != null)
+                    Container(
+                      width: 40,
+                      height: 40,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF333333)),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: CachedNetworkImage(
+                        imageUrl: profile.avatarUrl!,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  else
+                    const Icon(Icons.person_outline_rounded, color: Color(0xFFFF2E74), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      profile.avatarType != null
+                          ? 'Style: ${profile.avatarType}'
+                          : 'Choose placeholder avatar',
+                      style: GoogleFonts.outfit(
+                        color: const Color(0xFFCCCCCC),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded,
+                      color: Color(0xFF555555), size: 14),
+                ],
+              ),
+            ),
+          ),
           // Theme
           _SectionHeader('Theme'),
           GestureDetector(
@@ -792,6 +835,18 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
         },
       ),
     );
+  }
+
+  void _openAvatarPicker() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const MyAvatarScreen(),
+      ),
+    ).then((_) {
+      ref.read(profileProvider.notifier).loadProfile();
+      ref.read(feedProvider.notifier).loadFeed();
+    });
   }
 
   Widget _buildPhotosSection(UserProfile profile) {

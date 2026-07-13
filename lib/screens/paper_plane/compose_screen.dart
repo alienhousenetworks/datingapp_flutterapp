@@ -171,9 +171,12 @@ class _PaperPlaneComposeScreenState
                   child: FadeTransition(
                     opacity: _fadeAnim,
                     child: AnimatedBuilder(
-                      animation: _foldAnim,
+                      animation: Listenable.merge([_foldAnim, _messageController]),
                       builder: (_, __) {
-                        return _PlaneWidget(foldProgress: _foldAnim.value);
+                        return _PlaneWidget(
+                          foldProgress: _foldAnim.value,
+                          message: _messageController.text,
+                        );
                       },
                     ),
                   ),
@@ -384,97 +387,169 @@ class _PaperPlaneComposeScreenState
   }
 }
 
-// ─── Plane Widget (paper → plane fold animation) ──────────────
+// ─── Plane Widget (paper → chili → plane fold animation) ──────────────
 class _PlaneWidget extends StatelessWidget {
   final double foldProgress; // 0 = paper, 1 = plane
+  final String message;
 
-  const _PlaneWidget({required this.foldProgress});
+  const _PlaneWidget({required this.foldProgress, required this.message});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 160,
-      height: 160,
+      width: 200,
+      height: 200,
       child: CustomPaint(
-        painter: _PlanePainter(foldProgress: foldProgress),
+        painter: _PlanePainter(progress: foldProgress, message: message),
       ),
     );
   }
 }
 
 class _PlanePainter extends CustomPainter {
-  final double foldProgress;
+  final double progress; // 0.0 to 1.0
+  final String message;
 
-  _PlanePainter({required this.foldProgress});
+  _PlanePainter({required this.progress, required this.message});
 
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
     final cy = size.height / 2;
 
-    // Paper fill
-    final paperPaint = Paint()
-      ..color =
-          Color.lerp(Colors.white, const Color(0xFFFF2E74), foldProgress)!
-      ..style = PaintingStyle.fill;
-
-    // Outline
-    final outlinePaint = Paint()
-      ..color = Colors.white54
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    if (foldProgress < 0.5) {
-      // Draw flat paper sheet
-      final t = foldProgress / 0.5;
+    if (progress < 0.35) {
+      // Phase 1: Note converts to chili
+      final t = progress / 0.35; // 0.0 -> 1.0
+      // Draw shrinking white note paper sheet
+      final paperPaint = Paint()
+        ..color = Colors.white.withValues(alpha: 1.0 - t)
+        ..style = PaintingStyle.fill;
       final path = Path()
-        ..moveTo(cx - 50 + t * 20, cy - 40)
-        ..lineTo(cx + 50 - t * 20, cy - 40 + t * 20)
-        ..lineTo(cx + 50 - t * 10, cy + 40 - t * 20)
-        ..lineTo(cx - 50 + t * 10, cy + 40)
+        ..moveTo(cx - 50 * (1.0 - t * 0.5), cy - 60 * (1.0 - t * 0.5))
+        ..lineTo(cx + 50 * (1.0 - t * 0.5), cy - 60 * (1.0 - t * 0.5))
+        ..lineTo(cx + 50 * (1.0 - t * 0.5), cy + 60 * (1.0 - t * 0.5))
+        ..lineTo(cx - 50 * (1.0 - t * 0.5), cy + 60 * (1.0 - t * 0.5))
         ..close();
       canvas.drawPath(path, paperPaint);
-      canvas.drawPath(path, outlinePaint);
 
-      // Fold lines on paper
-      final linePaint = Paint()
-        ..color = Colors.white.withOpacity(0.3 - t * 0.2)
-        ..strokeWidth = 1;
-      canvas.drawLine(
-          Offset(cx, cy - 40 + t * 10), Offset(cx, cy + 40 - t * 10),
-          linePaint);
-    } else {
-      // Draw paper plane
-      final t = (foldProgress - 0.5) / 0.5;
-      final path = Path()
-        // Nose
-        ..moveTo(cx + 60 * t, cy)
-        // Top wing
-        ..lineTo(cx - 40, cy - 20 - t * 10)
-        // Body top
-        ..lineTo(cx - 10, cy - 5 + t * 5)
-        // Bottom wing
-        ..lineTo(cx - 40, cy + 20 + t * 10)
-        // Tail
-        ..lineTo(cx - 20 + t * 5, cy + 5)
-        ..close();
-      canvas.drawPath(path, paperPaint);
-      canvas.drawPath(path, outlinePaint);
+      // Draw the text inside the paper sheet
+      if (t < 0.8) {
+        final textToShow = message.trim().isEmpty ? 'Add your note' : message;
+        final truncatedText = textToShow.length > 25 ? '${textToShow.substring(0, 22)}...' : textToShow;
+        
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: truncatedText,
+            style: TextStyle(
+              color: Colors.black.withValues(alpha: 1.0 - t / 0.8),
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+          textAlign: TextAlign.center,
+        );
+        textPainter.layout(maxWidth: 80 * (1.0 - t * 0.5));
+        textPainter.paint(
+          canvas,
+          Offset(cx - textPainter.width / 2, cy - textPainter.height / 2),
+        );
+      }
 
-      // Shadow/depth line
-      final shadowPaint = Paint()
-        ..color = Colors.black.withOpacity(0.2 * t)
-        ..strokeWidth = 1.5;
-      canvas.drawLine(
-        Offset(cx - 10, cy - 5 + t * 5),
-        Offset(cx - 20 + t * 5, cy + 5),
-        shadowPaint,
+      // Draw growing chili emoji 🌶️
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: '🌶️',
+          style: TextStyle(
+            fontSize: 24 * t + 8,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
       );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(cx - textPainter.width / 2, cy - textPainter.height / 2),
+      );
+    } else if (progress < 0.8) {
+      // Phase 2: Chili passes through paper plane
+      final t = (progress - 0.35) / 0.45; // 0.0 -> 1.0
+      
+      // Draw stationary paper plane at center
+      _drawPaperPlane(canvas, cx, cy, 1.2);
+
+      // Draw chili traveling from bottom-left to top-right through center
+      final startX = cx - 80;
+      final startY = cy + 60;
+      final endX = cx + 80;
+      final endY = cy - 60;
+      final chiliX = startX + (endX - startX) * t;
+      final chiliY = startY + (endY - startY) * t;
+
+      // Draw fire trail dots
+      final trailPaint = Paint()..style = PaintingStyle.fill;
+      for (double i = 0; i < t; i += 0.1) {
+        final tx = startX + (endX - startX) * i;
+        final ty = startY + (endY - startY) * i;
+        trailPaint.color = Color.lerp(Colors.redAccent, Colors.orangeAccent, i)!
+            .withValues(alpha: t - i + 0.1);
+        canvas.drawCircle(Offset(tx, ty), 4 + i * 4, trailPaint);
+      }
+
+      final textPainter = TextPainter(
+        text: const TextSpan(
+          text: '🌶️',
+          style: TextStyle(fontSize: 32),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(chiliX - textPainter.width / 2, chiliY - textPainter.height / 2),
+      );
+    } else {
+      // Phase 3: Paper plane ignites with glow
+      final t = (progress - 0.8) / 0.2; // 0.0 -> 1.0
+      // Draw glowing paper plane
+      final glowPaint = Paint()
+        ..color = const Color(0xFFFF2E74).withValues(alpha: 0.3 * t)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
+      canvas.drawCircle(Offset(cx, cy), 30, glowPaint);
+
+      _drawPaperPlane(canvas, cx, cy, 1.2);
+
+      // Show some flame sparks
+      final sparkPaint = Paint()
+        ..color = Colors.orangeAccent
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(cx - 30, cy + 10), 3 * t, sparkPaint);
+      canvas.drawCircle(Offset(cx - 20, cy + 20), 4 * t, sparkPaint);
     }
   }
 
+  void _drawPaperPlane(Canvas canvas, double cx, double cy, double scale) {
+    final planePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    final outlinePaint = Paint()
+      ..color = Colors.white70
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    final path = Path()
+      ..moveTo(cx + 25 * scale, cy)
+      ..lineTo(cx - 25 * scale, cy - 15 * scale)
+      ..lineTo(cx - 10 * scale, cy - 3 * scale)
+      ..lineTo(cx - 25 * scale, cy + 15 * scale)
+      ..lineTo(cx - 12 * scale, cy + 4 * scale)
+      ..close();
+    canvas.drawPath(path, planePaint);
+    canvas.drawPath(path, outlinePaint);
+  }
+
   @override
-  bool shouldRepaint(_PlanePainter old) => old.foldProgress != foldProgress;
+  bool shouldRepaint(_PlanePainter old) => old.progress != progress;
 }
 
 // ─── Launch Success Overlay ───────────────────────────────────

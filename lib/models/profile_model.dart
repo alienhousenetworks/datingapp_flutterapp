@@ -99,6 +99,10 @@ class UserProfile {
   final List<String> preferredGenderIds;
   // Theme fields assigned by backend
   final ThemeConfig? themeConfig;
+  final String? avatarId;
+  final String? avatarUrl;
+  final String? avatarType;
+  final String? photoStatus;
 
   UserProfile({
     required this.id,
@@ -136,6 +140,10 @@ class UserProfile {
     this.isDiscoverable = false,
     this.preferredGenderIds = const [],
     this.themeConfig,
+    this.avatarId,
+    this.avatarUrl,
+    this.avatarType,
+    this.photoStatus,
   });
 
   /// Mirrors backend `UserProfile.is_discoverable` (core onboarding fields).
@@ -149,9 +157,11 @@ class UserProfile {
   String get displayUsername => username ?? 'user';
 
   String? get primaryImageUrl {
-    if (images.isEmpty) return null;
-    final primary = images.where((i) => i.isPrimary).toList();
-    return primary.isNotEmpty ? primary.first.url : images.first.url;
+    if (images.isNotEmpty) {
+      final primary = images.where((i) => i.isPrimary).toList();
+      return primary.isNotEmpty ? primary.first.url : images.first.url;
+    }
+    return avatarUrl;
   }
 
   bool get hasLocation =>
@@ -354,6 +364,9 @@ class UserProfile {
           .toList();
     }
 
+    final avatarDet = json['avatar_detail'];
+    final avatarUrl = avatarDet != null ? avatarDet['image']?.toString() : null;
+
     return UserProfile(
       id: json['id']?.toString() ?? '',
       username: json['username']?.toString(),
@@ -392,6 +405,10 @@ class UserProfile {
       isDiscoverable: parseBool(json['is_discoverable']),
       preferredGenderIds: preferredGenderIds,
       themeConfig: theme,
+      avatarId: json['avatar']?.toString(),
+      avatarUrl: avatarUrl,
+      avatarType: json['avatar_type']?.toString(),
+      photoStatus: json['photo_status']?.toString(),
     );
   }
 
@@ -434,6 +451,10 @@ class UserProfile {
     bool? isDiscoverable,
     List<String>? preferredGenderIds,
     ThemeConfig? themeConfig,
+    String? avatarId,
+    String? avatarUrl,
+    String? avatarType,
+    String? photoStatus,
   }) =>
       UserProfile(
         id: id,
@@ -471,5 +492,37 @@ class UserProfile {
         isDiscoverable: isDiscoverable ?? this.isDiscoverable,
         preferredGenderIds: preferredGenderIds ?? this.preferredGenderIds,
         themeConfig: themeConfig ?? this.themeConfig,
+        avatarId: avatarId ?? this.avatarId,
+        avatarUrl: avatarUrl ?? this.avatarUrl,
+        avatarType: avatarType ?? this.avatarType,
+        photoStatus: photoStatus ?? this.photoStatus,
       );
 }
+
+class AvatarModel {
+  final String id;
+  final String? gender;
+  final String? style;
+  final String? category;
+  final String imageUrl;
+  final bool isActive;
+
+  AvatarModel({
+    required this.id,
+    this.gender,
+    this.style,
+    this.category,
+    required this.imageUrl,
+    this.isActive = true,
+  });
+
+  factory AvatarModel.fromJson(Map<String, dynamic> json) => AvatarModel(
+        id: json['id']?.toString() ?? '',
+        gender: json['gender'],
+        style: json['style'],
+        category: json['category'],
+        imageUrl: json['image'] ?? json['image_url'] ?? '',
+        isActive: json['is_active'] ?? true,
+      );
+}
+

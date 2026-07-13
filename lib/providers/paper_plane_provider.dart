@@ -106,6 +106,7 @@ enum GamePhase {
 
 class CatchGameState {
   final GamePhase phase;
+  final List<SkyPlane> skyPlanes;
   final PlaneDelivery? delivery;
   final GameConfig? gameConfig;
   final CatchResult? catchResult;
@@ -114,6 +115,7 @@ class CatchGameState {
 
   const CatchGameState({
     this.phase = GamePhase.idle,
+    this.skyPlanes = const [],
     this.delivery,
     this.gameConfig,
     this.catchResult,
@@ -123,6 +125,7 @@ class CatchGameState {
 
   CatchGameState copyWith({
     GamePhase? phase,
+    List<SkyPlane>? skyPlanes,
     PlaneDelivery? delivery,
     GameConfig? gameConfig,
     CatchResult? catchResult,
@@ -132,6 +135,7 @@ class CatchGameState {
   }) =>
       CatchGameState(
         phase: phase ?? this.phase,
+        skyPlanes: skyPlanes ?? this.skyPlanes,
         delivery: delivery ?? this.delivery,
         gameConfig: gameConfig ?? this.gameConfig,
         catchResult: catchResult ?? this.catchResult,
@@ -144,6 +148,42 @@ class CatchGameNotifier extends StateNotifier<CatchGameState> {
   final PaperPlaneService _service;
 
   CatchGameNotifier(this._service) : super(const CatchGameState());
+
+  /// Fetch up to 20 planes in the sky
+  Future<void> fetchSkyPlanes() async {
+    state = state.copyWith(clearError: true);
+    try {
+      final planes = await _service.getSkyPlanes();
+      state = state.copyWith(skyPlanes: planes);
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  /// Catch a specific plane from the sky view
+  Future<void> catchPlane(String planeId) async {
+    state = state.copyWith(clearError: true);
+    try {
+      final config = await _service.catchSkyPlane(planeId);
+      final placeholderDelivery = PlaneDelivery(
+        id: config.deliveryId,
+        planeId: planeId,
+        senderCity: '',
+        sticker: '',
+        status: DeliveryStatus.gameStarted,
+        notifiedAt: DateTime.now(),
+        notificationDeadline: DateTime.now(),
+        gameDeadline: config.gameDeadline,
+      );
+      state = state.copyWith(
+        phase: GamePhase.catching,
+        delivery: placeholderDelivery,
+        gameConfig: config,
+      );
+    } catch (e) {
+      state = state.copyWith(phase: GamePhase.error, error: e.toString());
+    }
+  }
 
   /// Called on app open / notification tap — check if a plane is waiting
   Future<void> checkInbox() async {

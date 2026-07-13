@@ -161,19 +161,16 @@ class _PaperPlaneHubScreenState extends ConsumerState<PaperPlaneHubScreen> {
                     ),
                   ),
 
-                  // ── Incoming Plane (Recipient) ──
+                  // ── Sky View (Recipient) ──
                   const SizedBox(height: 28),
-                  const _SectionTitle(text: 'Incoming Plane'),
+                  const _SectionTitle(text: 'Sky View'),
                   const SizedBox(height: 12),
-                  if (!hasIncoming)
-                    _EmptyInboxCard()
-                  else
-                    _IncomingPlaneCard(
-                      delivery: gameState.delivery!,
-                      phase: gameState.phase,
-                      onCatch: () => _openCatchGame(gameState.delivery!),
-                      onReveal: () => _pushScreen(const MessageRevealScreen()),
-                    ),
+                  _SkyViewCard(
+                    onTap: () {
+                      ref.read(catchGameProvider.notifier).fetchSkyPlanes();
+                      _pushScreen(const CatchGameScreen());
+                    },
+                  ),
 
                   // ── My Planes (Sender) ──
                   const SizedBox(height: 28),
@@ -253,153 +250,84 @@ class _PaperPlaneHubScreenState extends ConsumerState<PaperPlaneHubScreen> {
   }
 }
 
-// ─── Incoming Plane Card ──────────────────────────────────────
-class _IncomingPlaneCard extends StatelessWidget {
-  final PlaneDelivery delivery;
-  final GamePhase phase;
-  final VoidCallback onCatch;
-  final VoidCallback onReveal;
+// ─── Sky View Card ────────────────────────────────────────────
+class _SkyViewCard extends StatelessWidget {
+  final VoidCallback onTap;
 
-  const _IncomingPlaneCard({
-    required this.delivery,
-    required this.phase,
-    required this.onCatch,
-    required this.onReveal,
-  });
+  const _SkyViewCard({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final isPending =
-        phase == GamePhase.notified || phase == GamePhase.catching;
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(18),
+        color: const Color(0xFF161618),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFFFF2E74).withOpacity(0.4),
+          color: const Color(0xFFFF2E74).withOpacity(0.25),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF2E74).withOpacity(0.08),
+            color: const Color(0xFFFF2E74).withOpacity(0.04),
             blurRadius: 20,
-            spreadRadius: 3,
+            spreadRadius: 2,
           ),
         ],
       ),
       child: Row(
         children: [
-          // Animated plane icon
-          _AnimatedPlaneIcon(),
+          Container(
+            width: 48,
+            height: 48,
+            decoration: const BoxDecoration(
+              color: Color(0xFF1E1E24),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: const Text('🌌', style: TextStyle(fontSize: 22)),
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'A plane landed for you!',
+                  'Planes in the Sky',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  delivery.senderCity.isNotEmpty
-                      ? 'From ${delivery.senderCity}'
-                      : 'From somewhere in the world',
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: 13,
+                  'Catch paper planes flying within your area.',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.6),
+                    fontSize: 12,
                   ),
                 ),
-                if (delivery.sticker.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(delivery.sticker,
-                      style: const TextStyle(fontSize: 20)),
-                ],
               ],
             ),
           ),
           const SizedBox(width: 12),
-          // CTA
-          GestureDetector(
-            onTap: phase == GamePhase.revealed ? onReveal : onCatch,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF2E74),
+          ElevatedButton(
+            onPressed: onTap,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF2E74),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(
-                phase == GamePhase.revealed ? 'Open' : 'Catch!',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            child: const Text(
+              'Enter',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _AnimatedPlaneIcon extends StatefulWidget {
-  @override
-  State<_AnimatedPlaneIcon> createState() => _AnimatedPlaneIconState();
-}
-
-class _AnimatedPlaneIconState extends State<_AnimatedPlaneIcon>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _wobble;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1500))
-      ..repeat(reverse: true);
-    _wobble = Tween<double>(begin: -0.05, end: 0.05).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _wobble,
-      builder: (_, __) => Transform.rotate(
-        angle: _wobble.value,
-        child: Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFFFF2E74).withOpacity(0.2),
-                const Color(0xFFFF6B35).withOpacity(0.2),
-              ],
-            ),
-            shape: BoxShape.circle,
-          ),
-          child: const Center(
-            child: Text('✈️', style: TextStyle(fontSize: 26)),
-          ),
-        ),
       ),
     );
   }

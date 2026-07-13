@@ -75,6 +75,7 @@ class AppConstants {
   static const String languages = '$apiV1/languages/';
   static const String turnOns = '$apiV1/turn_ons/';
   static const String moodOptions = '$apiV1/mood_options/';
+  static const String avatars = '$apiV1/avatars/';
 
   // ─── Verification ───────────────────────────────────────
   static const String verificationStatus = '$apiV1/verification/status/';
@@ -98,6 +99,8 @@ class AppConstants {
   static const String paperPlaneBase = '$apiV1/paper-plane/';
   static const String paperPlaneLaunch = '$apiV1/paper-plane/launch/';
   static const String paperPlaneMyPlanes = '$apiV1/paper-plane/my-planes/';
+  static const String paperPlaneSky = '$apiV1/paper-plane/sky/';
+  static const String paperPlaneCatchSkyPlane = '$apiV1/paper-plane/catch-sky-plane/';
   static const String paperPlaneInbox = '$apiV1/paper-plane/inbox/';
 
   // ─── Storage Keys ───────────────────────────────────────

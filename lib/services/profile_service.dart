@@ -85,6 +85,30 @@ class ProfileService {
     }
   }
 
+  // GET /api/v1/avatars/
+  Future<List<AvatarModel>> getAvatars() async {
+    try {
+      final response = await _client.get(AppConstants.avatars);
+      final list = response.data as List<dynamic>;
+      return list.map((e) => AvatarModel.fromJson(e)).toList();
+    } on DioException catch (e) {
+      throw _parseError(e);
+    }
+  }
+
+  // PATCH /api/v1/profile/me/
+  Future<UserProfile> changeAvatar(String avatarId) async {
+    try {
+      final response = await _client.patch(AppConstants.profileMe, data: {
+        'avatar': avatarId,
+      });
+      return UserProfile.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _parseError(e);
+    }
+  }
+
+
 
   // GET /api/v1/profile/username-available/
   Future<bool> isUsernameAvailable(String username) async {

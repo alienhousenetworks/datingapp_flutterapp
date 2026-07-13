@@ -8,9 +8,9 @@ import '../../providers/feed_provider.dart';
 import '../../providers/like_tracker_provider.dart';
 import '../../providers/profile_provider.dart';
 import '../../theme/feed_card_theme.dart';
+import '../../theme/feed_layout.dart';
 import '../../theme/discovery_background.dart';
 import '../../utils/option_resolver.dart';
-import 'feed_character_art.dart';
 
 /// Figma Alien-House feed card:
 /// Horizontal pages: Hero → Photo focus → Details → Turn-ons
@@ -40,6 +40,8 @@ class _FeedProfileCardState extends ConsumerState<FeedProfileCard> {
   UserProfile get profile => widget.item.profile;
   FeedCardTheme get theme =>
       FeedCardThemeCatalog.resolve(profile.themeConfig?.bgVariantId);
+  FeedLayoutStyle get layoutStyle =>
+      FeedLayoutCatalog.resolve(profile.themeConfig?.layoutId);
   List<ProfileImage> get images => profile.images;
   bool get hasImages => images.isNotEmpty;
   int get pageCount => hasImages ? 4 : 3;
@@ -127,8 +129,8 @@ class _FeedProfileCardState extends ConsumerState<FeedProfileCard> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                theme.primaryColor.withValues(alpha: 0.2),
-                Colors.black.withValues(alpha: 0.55),
+                Colors.transparent,
+                Colors.black.withValues(alpha: 0.65),
               ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -156,6 +158,7 @@ class _FeedProfileCardState extends ConsumerState<FeedProfileCard> {
                               _HeroPage(
                                 profile: profile,
                                 theme: theme,
+                                layoutStyle: layoutStyle,
                                 images: images,
                                 photoIdx: _photoIdx,
                                 onPhotoChanged: (i) =>
@@ -185,6 +188,7 @@ class _FeedProfileCardState extends ConsumerState<FeedProfileCard> {
                               _CharacterHeroPage(
                                 profile: profile,
                                 theme: theme,
+                                layoutStyle: layoutStyle,
                                 large: false,
                               ),
                               _DetailsPage(
@@ -222,9 +226,15 @@ class _FeedProfileCardState extends ConsumerState<FeedProfileCard> {
                 ),
               ),
               if (widget.onDm != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                  child: _DmButton(onTap: widget.onDm!),
+                SafeArea(
+                  top: false,
+                  left: false,
+                  right: false,
+                  bottom: true,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                    child: _DmButton(onTap: widget.onDm!),
+                  ),
                 ),
             ],
           ),
@@ -238,6 +248,7 @@ class _FeedProfileCardState extends ConsumerState<FeedProfileCard> {
 class _HeroPage extends StatefulWidget {
   final UserProfile profile;
   final FeedCardTheme theme;
+  final FeedLayoutStyle layoutStyle;
   final List<ProfileImage> images;
   final int photoIdx;
   final ValueChanged<int> onPhotoChanged;
@@ -245,6 +256,7 @@ class _HeroPage extends StatefulWidget {
   const _HeroPage({
     required this.profile,
     required this.theme,
+    required this.layoutStyle,
     required this.images,
     required this.photoIdx,
     required this.onPhotoChanged,
@@ -279,56 +291,210 @@ class _HeroPageState extends State<_HeroPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
+    final width = MediaQuery.of(context).size.width;
+
+    if (widget.layoutStyle.fullBleedPhoto) {
+      return Stack(
         children: [
-          const SizedBox(height: 8),
-          SizedBox(
-            height: MediaQuery.of(context).size.width * 0.85,
-            child: Stack(
-              alignment: Alignment.center,
+          Positioned.fill(
+            child: PageView.builder(
+              controller: _heroPhotoCtrl,
+              itemCount: widget.images.length,
+              onPageChanged: widget.onPhotoChanged,
+              itemBuilder: (_, i) => _FeedImage(
+                url: widget.images[i].url,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.black.withOpacity(0.15),
+                    Colors.black.withOpacity(0.85),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 24,
+            right: 24,
+            bottom: 110,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                if (widget.images.length > 1)
-                  Positioned.fill(
-                    child: Transform.rotate(
-                      angle: -0.1,
-                      child: _PolaroidFrame(
-                        child: _FeedImage(
-                          url: widget.images[1].url,
-                          fit: BoxFit.cover,
-                        ),
-                        faded: true,
-                      ),
-                    ),
-                  ),
-                Positioned.fill(
-                  child: Transform.rotate(
-                    angle: 0.05,
-                    child: _PolaroidFrame(
-                      badges: true,
-                      child: PageView.builder(
-                        controller: _heroPhotoCtrl,
-                        itemCount: widget.images.length,
-                        onPageChanged: widget.onPhotoChanged,
-                        itemBuilder: (_, i) => _FeedImage(
-                          url: widget.images[i].url,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                  ),
+                _ProfileHeader(
+                  profile: widget.profile,
+                  theme: widget.theme,
+                  layoutStyle: widget.layoutStyle,
+                ),
+                const SizedBox(height: 12),
+                _SwipeHint(
+                  text: 'SWIPE FOR PHOTOS →',
+                  color: widget.theme.textColor.withOpacity(0.9),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          _ProfileHeader(profile: widget.profile, theme: widget.theme),
+        ],
+      );
+    }
+
+    if (widget.layoutStyle.photoOnLeft) {
+      return Container(
+        height: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        alignment: Alignment.center,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: width * widget.layoutStyle.photoWidthFactor,
+              height: width * 0.9,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(widget.layoutStyle.borderRadius),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                  border: widget.layoutStyle.showAccentBorder
+                      ? Border.all(
+                          color: widget.theme.accentColor,
+                          width: widget.layoutStyle.borderWidth,
+                        )
+                      : null,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(widget.layoutStyle.borderRadius),
+                  child: PageView.builder(
+                    controller: _heroPhotoCtrl,
+                    itemCount: widget.images.length,
+                    onPageChanged: widget.onPhotoChanged,
+                    itemBuilder: (_, i) => _FeedImage(
+                      url: widget.images[i].url,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _ProfileHeader(
+                    profile: widget.profile,
+                    theme: widget.theme,
+                    layoutStyle: widget.layoutStyle,
+                    alignLeft: true,
+                  ),
+                  const SizedBox(height: 12),
+                  _SwipeHint(
+                    text: 'SWIPE PHOTOS →',
+                    color: widget.theme.textColor.withOpacity(0.7),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final double cardHeight = widget.layoutStyle.compactCard ? width * 0.82 : width * 0.95;
+    final double cardWidth = width * widget.layoutStyle.photoWidthFactor * 1.6;
+
+    Widget photoContainer = Container(
+      height: cardHeight,
+      width: cardWidth,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(widget.layoutStyle.borderRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+        border: widget.layoutStyle.showAccentBorder
+            ? Border.all(
+                color: widget.theme.accentColor,
+                width: widget.layoutStyle.borderWidth,
+              )
+            : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(widget.layoutStyle.borderRadius),
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _heroPhotoCtrl,
+              itemCount: widget.images.length,
+              onPageChanged: widget.onPhotoChanged,
+              itemBuilder: (_, i) => _FeedImage(
+                url: widget.images[i].url,
+                fit: BoxFit.cover,
+              ),
+            ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 50,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.black.withOpacity(0.5),
+                      Colors.transparent,
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (widget.layoutStyle.photoRotation != 0) {
+      photoContainer = Transform.rotate(
+        angle: widget.layoutStyle.photoRotation,
+        child: photoContainer,
+      );
+    }
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
           const SizedBox(height: 12),
+          photoContainer,
+          const SizedBox(height: 20),
+          _ProfileHeader(
+            profile: widget.profile,
+            theme: widget.theme,
+            layoutStyle: widget.layoutStyle,
+          ),
+          const SizedBox(height: 16),
           _SwipeHint(
             text: 'SWIPE FOR PHOTOS →',
-            color: widget.theme.textColor,
+            color: widget.theme.textColor.withOpacity(0.7),
           ),
           const SizedBox(height: 40),
         ],
@@ -400,10 +566,11 @@ class _PhotoFocusPageState extends State<_PhotoFocusPage> {
           const SizedBox(height: 12),
           Text(
             'PHOTOS',
-            style: GoogleFonts.bungee(
-              color: widget.theme.accentColor,
-              fontSize: 22,
-              letterSpacing: 1,
+            style: GoogleFonts.outfit(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 12),
@@ -451,7 +618,7 @@ class _PhotoFocusPageState extends State<_PhotoFocusPage> {
                       border: Border.all(
                         color: selected
                             ? Colors.white
-                            : Colors.white.withValues(alpha: 0.3),
+                            : Colors.white.withOpacity(0.3),
                         width: selected ? 3 : 1,
                       ),
                     ),
@@ -482,75 +649,184 @@ class _PhotoFocusPageState extends State<_PhotoFocusPage> {
 class _CharacterHeroPage extends StatelessWidget {
   final UserProfile profile;
   final FeedCardTheme theme;
+  final FeedLayoutStyle layoutStyle;
   final bool large;
 
   const _CharacterHeroPage({
     required this.profile,
     required this.theme,
+    required this.layoutStyle,
     this.large = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final h = MediaQuery.of(context).size.height * (large ? 0.55 : 0.42);
+    final w = MediaQuery.of(context).size.width;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
+    if (layoutStyle.fullBleedPhoto) {
+      return Stack(
         children: [
-          const SizedBox(height: 12),
-          Container(
-            height: h,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+          Positioned.fill(
+            child: _FeedImage(
+              url: profile.avatarUrl ?? '',
+              fit: BoxFit.cover,
             ),
-            clipBehavior: Clip.antiAlias,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: FeedCharacterArt(
-                    gender: profile.gender,
-                    seed: profile.id,
-                  ),
+          ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.black.withOpacity(0.15),
+                    Colors.black.withOpacity(0.85),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
-                Positioned(
-                  bottom: 12,
-                  left: 12,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: theme.accentColor.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'No photo yet',
-                      style: GoogleFonts.caveat(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 24,
+            right: 24,
+            bottom: 110,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _ProfileHeader(
+                  profile: profile,
+                  theme: theme,
+                  layoutStyle: layoutStyle,
+                ),
+                const SizedBox(height: 12),
+                _SwipeHint(
+                  text: 'SWIPE FOR DETAILS →',
+                  color: theme.textColor.withOpacity(0.9),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          _ProfileHeader(profile: profile, theme: theme),
+        ],
+      );
+    }
+
+    if (layoutStyle.photoOnLeft) {
+      return Container(
+        height: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        alignment: Alignment.center,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: w * layoutStyle.photoWidthFactor,
+              height: w * 0.9,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white10,
+                  borderRadius: BorderRadius.circular(layoutStyle.borderRadius),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                  border: layoutStyle.showAccentBorder
+                      ? Border.all(
+                          color: theme.accentColor,
+                          width: layoutStyle.borderWidth,
+                        )
+                      : null,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(layoutStyle.borderRadius),
+                  child: _FeedImage(
+                    url: profile.avatarUrl ?? '',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _ProfileHeader(
+                    profile: profile,
+                    theme: theme,
+                    layoutStyle: layoutStyle,
+                    alignLeft: true,
+                  ),
+                  const SizedBox(height: 12),
+                  _SwipeHint(
+                    text: 'SWIPE FOR DETAILS →',
+                    color: theme.textColor.withOpacity(0.7),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final double cardHeight = layoutStyle.compactCard ? w * 0.82 : w * 0.95;
+    final double cardWidth = w * layoutStyle.photoWidthFactor * 1.6;
+
+    Widget characterArt = Container(
+      height: cardHeight,
+      width: cardWidth,
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(layoutStyle.borderRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+        border: layoutStyle.showAccentBorder
+            ? Border.all(
+                color: theme.accentColor,
+                width: layoutStyle.borderWidth,
+              )
+            : null,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: _FeedImage(
+        url: profile.avatarUrl ?? '',
+        fit: BoxFit.cover,
+      ),
+    );
+
+    if (layoutStyle.photoRotation != 0) {
+      characterArt = Transform.rotate(
+        angle: layoutStyle.photoRotation,
+        child: characterArt,
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
           const SizedBox(height: 12),
+          characterArt,
+          const SizedBox(height: 20),
+          _ProfileHeader(
+            profile: profile,
+            theme: theme,
+            layoutStyle: layoutStyle,
+          ),
+          const SizedBox(height: 16),
           _SwipeHint(
             text: 'SWIPE FOR DETAILS →',
-            color: theme.textColor,
+            color: theme.textColor.withOpacity(0.7),
           ),
           const SizedBox(height: 40),
         ],
@@ -584,14 +860,16 @@ class _DetailsPage extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             'ABOUT',
-            style: GoogleFonts.bungee(
-              color: theme.accentColor,
-              fontSize: 26,
+            style: GoogleFonts.outfit(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            profile.displayUsername.toUpperCase(),
+            profile.displayUsername,
             style: GoogleFonts.outfit(
               color: textColor,
               fontSize: 20,
@@ -612,7 +890,7 @@ class _DetailsPage extends StatelessWidget {
                 ? Text(
                     'Not set',
                     style: GoogleFonts.outfit(
-                      color: textColor.withValues(alpha: 0.6),
+                      color: textColor.withOpacity(0.6),
                     ),
                   )
                 : Wrap(
@@ -629,21 +907,20 @@ class _DetailsPage extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.15),
+                color: Colors.black.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: Colors.white.withOpacity(0.1),
                 ),
               ),
               child: Text(
                 profile.bio?.isNotEmpty == true
                     ? profile.bio!
                     : 'No bio yet.',
-                style: GoogleFonts.caveat(
-                  color: theme.accentColor,
-                  fontSize: 20,
-                  height: 1.35,
-                  fontWeight: FontWeight.w600,
+                style: GoogleFonts.outfit(
+                  color: Colors.white70,
+                  fontSize: 14,
+                  height: 1.4,
                 ),
               ),
             ),
@@ -694,9 +971,11 @@ class _TurnOnsPage extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             'TURN ONS',
-            style: GoogleFonts.bungee(
-              color: theme.accentColor,
-              fontSize: 26,
+            style: GoogleFonts.outfit(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 20),
@@ -705,14 +984,14 @@ class _TurnOnsPage extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.15),
+                color: Colors.black.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
                 'Nothing listed yet',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
-                  color: theme.textColor.withValues(alpha: 0.6),
+                  color: theme.textColor.withOpacity(0.6),
                   fontSize: 15,
                 ),
               ),
@@ -730,10 +1009,10 @@ class _TurnOnsPage extends StatelessWidget {
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
+                        color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: theme.accentColor.withValues(alpha: 0.6),
+                          color: theme.accentColor.withOpacity(0.6),
                         ),
                       ),
                       child: Text(
@@ -753,14 +1032,14 @@ class _TurnOnsPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.2),
+                color: Colors.black.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 '✨ ${profile.mood}',
-                style: GoogleFonts.caveat(
+                style: GoogleFonts.outfit(
                   color: theme.accentColor,
-                  fontSize: 18,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -776,92 +1055,122 @@ class _TurnOnsPage extends StatelessWidget {
 class _ProfileHeader extends StatelessWidget {
   final UserProfile profile;
   final FeedCardTheme theme;
+  final FeedLayoutStyle layoutStyle;
+  final bool alignLeft;
 
-  const _ProfileHeader({required this.profile, required this.theme});
+  const _ProfileHeader({
+    required this.profile,
+    required this.theme,
+    required this.layoutStyle,
+    this.alignLeft = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final age = profile.age;
     final genderShort = _genderShort(profile.gender);
+    final isBold = layoutStyle.boldTypography;
 
     return Column(
+      crossAxisAlignment: alignLeft ? CrossAxisAlignment.start : CrossAxisAlignment.center,
       children: [
         Text(
-          '${profile.displayUsername.toUpperCase()}${age != null ? ', $age' : ''}${genderShort.isNotEmpty ? ' $genderShort' : ''}',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.bungee(
-            color: const Color(0xFFFFD700),
-            fontSize: 24,
-            shadows: const [
-              Shadow(
-                color: Colors.black54,
-                blurRadius: 4,
-                offset: Offset(1, 2),
-              ),
-            ],
+          '${profile.displayUsername}${age != null ? ', $age' : ''}${genderShort.isNotEmpty ? ' • $genderShort' : ''}',
+          textAlign: alignLeft ? TextAlign.left : TextAlign.center,
+          style: GoogleFonts.outfit(
+            color: Colors.white,
+            fontSize: isBold ? 30 : 25,
+            fontWeight: isBold ? FontWeight.w900 : FontWeight.w800,
+            letterSpacing: isBold ? -1.0 : -0.5,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Wrap(
           alignment: WrapAlignment.center,
-          spacing: 14,
+          spacing: 12,
           runSpacing: 4,
           children: [
             if (profile.distanceText.isNotEmpty)
-              Text(
-                profile.distanceText,
-                style: GoogleFonts.caveat(
-                  color: const Color(0xFFFFD700),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  profile.distanceText,
+                  style: GoogleFonts.outfit(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             if (profile.sexuality != null)
-              Text(
-                profile.sexuality!,
-                style: GoogleFonts.caveat(
-                  color: const Color(0xFFFFD700),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  profile.sexuality!,
+                  style: GoogleFonts.outfit(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             if (profile.isOnline)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF00E676),
-                      shape: BoxShape.circle,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00E676).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF00E676).withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF00E676),
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Online',
-                    style: GoogleFonts.outfit(
-                      color: const Color(0xFF00E676),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(width: 6),
+                    Text(
+                      'Online',
+                      style: GoogleFonts.outfit(
+                        color: const Color(0xFF00E676),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
           ],
         ),
         if (profile.bio != null && profile.bio!.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: EdgeInsets.only(
+              top: 14,
+              left: alignLeft ? 0 : 16,
+              right: alignLeft ? 0 : 16,
+            ),
             child: Text(
               profile.bio!,
-              textAlign: TextAlign.center,
-              maxLines: 2,
+              textAlign: alignLeft ? TextAlign.left : TextAlign.center,
+              maxLines: layoutStyle.compactCard ? 2 : 3,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.caveat(
-                color: const Color(0xFFFFD700),
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
+              style: GoogleFonts.outfit(
+                color: Colors.white60,
+                fontSize: 14,
+                height: 1.4,
               ),
             ),
           ),
@@ -877,89 +1186,6 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
-class _PolaroidFrame extends StatelessWidget {
-  final Widget child;
-  final bool faded;
-  final bool badges;
-
-  const _PolaroidFrame({
-    required this.child,
-    this.faded = false,
-    this.badges = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 36),
-            child: Opacity(
-              opacity: faded ? 0.65 : 1,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: child,
-              ),
-            ),
-          ),
-          if (badges) ...[
-            Positioned(
-              left: -4,
-              bottom: 28,
-              child: _CircleBadge(emoji: '😎', size: 44),
-            ),
-            Positioned(
-              right: -8,
-              bottom: 20,
-              child: _CircleBadge(emoji: '🎵', size: 52),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _CircleBadge extends StatelessWidget {
-  final String emoji;
-  final double size;
-
-  const _CircleBadge({required this.emoji, required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: const Color(0xFF8BD969),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 3),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      alignment: Alignment.center,
-      child: Text(emoji, style: TextStyle(fontSize: size * 0.45)),
-    );
-  }
-}
 
 class _FeedImage extends StatelessWidget {
   final String url;

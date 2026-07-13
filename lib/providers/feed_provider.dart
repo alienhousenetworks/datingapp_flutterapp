@@ -149,7 +149,8 @@ class FeedNotifier extends StateNotifier<FeedState> {
     }
 
     final enriched = _enrichWithLikeState(page.items);
-    final merged = append ? _mergeItems(state.items, enriched) : enriched;
+    final deduplicated = _deduplicate(enriched);
+    final merged = append ? _mergeItems(state.items, deduplicated) : deduplicated;
 
     state = state.copyWith(
       items: merged,
@@ -162,6 +163,18 @@ class FeedNotifier extends StateNotifier<FeedState> {
       profileIncomplete: false,
       emptyReason: merged.isEmpty ? page.emptyReason : null,
     );
+  }
+
+  List<FeedItem> _deduplicate(List<FeedItem> items) {
+    final seen = <String>{};
+    final unique = <FeedItem>[];
+    for (final item in items) {
+      if (!seen.contains(item.profile.id)) {
+        unique.add(item);
+        seen.add(item.profile.id);
+      }
+    }
+    return unique;
   }
 
   List<FeedItem> _enrichWithLikeState(List<FeedItem> items) {
