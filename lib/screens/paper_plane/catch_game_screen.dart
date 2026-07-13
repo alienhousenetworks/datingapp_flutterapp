@@ -73,6 +73,7 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
   // ── Net position (moved by tilt or pan gesture) ──
   Offset _netPosition = const Offset(0.5, 0.5); // normalized 0-1
   bool _hasCaught = false;
+  bool _isHoveringClose = false;
 
   // ── Accelerometer stream subscription ──
   StreamSubscription<AccelerometerEvent>? _sensorSubscription;
@@ -227,6 +228,7 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
     GamePlane? closestPlane;
     double minDistance = 55.0; // Net radius threshold
     Offset closestPlaneNorm = Offset.zero;
+    bool isAnyPlaneNear = false;
 
     for (final gp in _gamePlanes) {
       final planeNorm = _planePositionNorm(gp.progress, gp.pathSeed);
@@ -234,11 +236,20 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
       final netPx = Offset(_netPosition.dx * screenSize.width, _netPosition.dy * screenSize.height);
 
       final dist = (planePx - netPx).distance;
+      if (dist < 95.0) {
+        isAnyPlaneNear = true;
+      }
       if (dist < minDistance) {
         minDistance = dist;
         closestPlane = gp;
         closestPlaneNorm = planeNorm;
       }
+    }
+
+    if (isAnyPlaneNear != _isHoveringClose) {
+      setState(() {
+        _isHoveringClose = isAnyPlaneNear;
+      });
     }
 
     if (closestPlane != null) {
@@ -289,7 +300,7 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
     }
 
     final mt = 1 - t;
-    return Offset(
+    final basePos = Offset(
       mt * mt * mt * p0.dx +
           3 * mt * mt * t * p1.dx +
           3 * mt * t * t * p2.dx +
@@ -299,6 +310,12 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
           3 * mt * t * t * p2.dy +
           t * t * t * p3.dy,
     );
+
+    // Dynamic wave drift based on the unique seed
+    final driftX = math.sin(t * math.pi * 4.0 + seed) * 0.035;
+    final driftY = math.cos(t * math.pi * 3.0 + seed) * 0.025;
+
+    return Offset(basePos.dx + driftX, basePos.dy + driftY);
   }
 
   void _showInstructionDialog() {
@@ -356,151 +373,154 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
                   (_) => _checkCollision(size));
             }
 
-            return Stack(
-              children: [
-                // ── Game Canvas ──
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _GameCanvasPainter(
-                      gamePlanes: _gamePlanes,
-                      decoPlanes: _decoPlanes,
-                      getPlanePos: _planePositionNorm,
-                      netNorm: _netPosition,
-                      cloudPositions: _cloudPositions,
-                      secondsLeft: _secondsLeft,
-                      totalSeconds: gameState.gameConfig?.gameWindowSeconds ?? 120,
-                      hasCaught: _hasCaught,
-                      morphProgress: _morphProgress.value,
-                      collisionNorm: _collisionNorm,
+            return SizedBox.expand(
+              child: Stack(
+                children: [
+                  // ── Game Canvas ──
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _GameCanvasPainter(
+                        gamePlanes: _gamePlanes,
+                        decoPlanes: _decoPlanes,
+                        getPlanePos: _planePositionNorm,
+                        netNorm: _netPosition,
+                        cloudPositions: _cloudPositions,
+                        secondsLeft: _secondsLeft,
+                        totalSeconds: gameState.gameConfig?.gameWindowSeconds ?? 120,
+                        hasCaught: _hasCaught,
+                        morphProgress: _morphProgress.value,
+                        collisionNorm: _collisionNorm,
+                        isHoveringClose: _isHoveringClose,
+                      ),
                     ),
                   ),
-                ),
 
-                // ── Top Bar HUD ──
-                if (!_hasCaught)
-                  SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white.withOpacity(0.3)),
-                            ),
-                            child: Text(
-                              '${_secondsLeft}s',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                  // ── Top Bar HUD ──
+                  if (!_hasCaught)
+                    SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.white.withOpacity(0.3)),
                               ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: _secondsLeft /
-                                      (gameState.gameConfig?.gameWindowSeconds ?? 60),
-                                  backgroundColor: Colors.white.withOpacity(0.2),
-                                  valueColor: const AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                  minHeight: 6,
+                              child: Text(
+                                '${_secondsLeft}s',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: _secondsLeft /
+                                        (gameState.gameConfig?.gameWindowSeconds ?? 60),
+                                    backgroundColor: Colors.white.withOpacity(0.2),
+                                    valueColor: const AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                    minHeight: 6,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                    ),
+
+                  // ── Bottom UI Overlays (Matching exactly the screenshot) ──
+                  Positioned(
+                    bottom: 30,
+                    left: 0,
+                    right: 0,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Circular action button with send paper plane icon
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.mediumImpact();
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const PaperPlaneComposeScreen()),
+                            );
+                          },
+                          child: Container(
+                            width: 72,
+                            height: 72,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.send_rounded,
+                              color: Color(0xFF8BA5F8),
+                              size: 32,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Pill-shaped outlined button "SEE YOUR PLANES"
+                        OutlinedButton(
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const MyPlanesScreen()),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.white, width: 2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
+                          ),
+                          child: const Text(
+                            'SEE YOUR PLANES',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
-                // ── Bottom UI Overlays (Matching exactly the screenshot) ──
-                Positioned(
-                  bottom: 30,
-                  left: 0,
-                  right: 0,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Circular action button with send paper plane icon
-                      GestureDetector(
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const PaperPlaneComposeScreen()),
-                          );
-                        },
-                        child: Container(
-                          width: 72,
-                          height: 72,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.send_rounded,
-                            color: Color(0xFF8BA5F8),
-                            size: 32,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Pill-shaped outlined button "SEE YOUR PLANES"
-                      OutlinedButton(
-                        onPressed: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const MyPlanesScreen()),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.white, width: 2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
-                        ),
-                        child: const Text(
-                          'SEE YOUR PLANES',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ),
-                    ],
+                  // Outlined info (i) button in bottom right corner
+                  Positioned(
+                    bottom: 30,
+                    right: 24,
+                    child: IconButton(
+                      icon: const Icon(Icons.info_outline, color: Colors.white, size: 24),
+                      onPressed: _showInstructionDialog,
+                    ),
                   ),
-                ),
-
-                // Outlined info (i) button in bottom right corner
-                Positioned(
-                  bottom: 30,
-                  right: 24,
-                  child: IconButton(
-                    icon: const Icon(Icons.info_outline, color: Colors.white, size: 24),
-                    onPressed: _showInstructionDialog,
-                  ),
-                ),
-              ],
+                ],
+              ),
             );
           },
         ),
@@ -521,6 +541,7 @@ class _GameCanvasPainter extends CustomPainter {
   final bool hasCaught;
   final double morphProgress;
   final Offset collisionNorm;
+  final bool isHoveringClose;
 
   _GameCanvasPainter({
     required this.gamePlanes,
@@ -533,6 +554,7 @@ class _GameCanvasPainter extends CustomPainter {
     required this.hasCaught,
     required this.morphProgress,
     required this.collisionNorm,
+    required this.isHoveringClose,
   });
 
   @override
@@ -650,6 +672,14 @@ class _GameCanvasPainter extends CustomPainter {
     canvas.translate(px, py);
     canvas.rotate(0.2); // Tilt rim like screenshot
 
+    // If hovering close, draw a glowing attraction halo
+    if (isHoveringClose && !hasCaught) {
+      final glowPaint = Paint()
+        ..color = Colors.white.withOpacity(0.35)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 18);
+      canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 80, height: 65), glowPaint);
+    }
+
     // Woven Net Bag/Pocket (Hanging down, clean white)
     final netBagPath = Path()
       ..moveTo(-35, 5)
@@ -731,12 +761,32 @@ class _GameCanvasPainter extends CustomPainter {
       canvas.drawPath(path, planePaint);
       canvas.restore();
     } else if (morphProgress < 0.6) {
-      // Phase 2: Sparkle / Morph Burst at net center
-      final t = (morphProgress - 0.4) / 0.2;
-      final sparklePaint = Paint()
+      // Phase 2: Sparkle / Particle Burst
+      final t = (morphProgress - 0.4) / 0.2; // 0.0 to 1.0
+      
+      // Draw 8 paper scraps radiating outwards
+      final burstPaint = Paint()
         ..color = Colors.white.withOpacity(1.0 - t)
         ..style = PaintingStyle.fill;
-      canvas.drawCircle(Offset(netX, netY), 15 * t + 5, sparklePaint);
+
+      for (int i = 0; i < 8; i++) {
+        final angle = i * math.pi / 4;
+        final dist = 45.0 * t;
+        final px = netX + math.cos(angle) * dist;
+        final py = netY + math.sin(angle) * dist;
+        
+        final path = Path()
+          ..moveTo(px, py)
+          ..lineTo(px - 5, py - 7)
+          ..lineTo(px + 5, py - 5)
+          ..close();
+        canvas.drawPath(path, burstPaint);
+      }
+
+      final glowPaint = Paint()
+        ..color = Colors.white.withOpacity(0.8 * (1.0 - t))
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16);
+      canvas.drawCircle(Offset(netX, netY), 20 * t + 5, glowPaint);
     } else {
       // Phase 3: Chili floats up from net to center
       final t = (morphProgress - 0.6) / 0.4;
