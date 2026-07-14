@@ -502,6 +502,7 @@ class UserProfile {
 class AvatarModel {
   final String id;
   final String? gender;
+  final String? sexuality;
   final String? style;
   final String? category;
   final String imageUrl;
@@ -510,6 +511,7 @@ class AvatarModel {
   AvatarModel({
     required this.id,
     this.gender,
+    this.sexuality,
     this.style,
     this.category,
     required this.imageUrl,
@@ -518,7 +520,8 @@ class AvatarModel {
 
   factory AvatarModel.fromJson(Map<String, dynamic> json) => AvatarModel(
         id: json['id']?.toString() ?? '',
-        gender: json['gender'],
+        gender: json['gender']?.toString(),
+        sexuality: json['sexuality']?.toString(),
         style: json['style'],
         category: json['category'],
         imageUrl: json['image'] ?? json['image_url'] ?? '',

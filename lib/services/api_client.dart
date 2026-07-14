@@ -118,9 +118,10 @@ class _AuthInterceptor extends Interceptor {
         );
 
         final newAccess = response.data['access'];
+        final newRefresh = response.data['refresh'] ?? refreshToken;
         await StorageService.saveTokens(
           accessToken: newAccess,
-          refreshToken: refreshToken,
+          refreshToken: newRefresh,
         );
 
         // Retry original request
