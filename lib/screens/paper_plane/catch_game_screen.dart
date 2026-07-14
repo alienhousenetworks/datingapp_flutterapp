@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 import '../../providers/paper_plane_provider.dart';
@@ -61,6 +59,8 @@ class DecoPlane {
   });
 }
 
+enum ControlMode { touch, tilt }
+
 class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
     with TickerProviderStateMixin {
   // ── Game tick controller for updating 20 planes ──
@@ -69,6 +69,9 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
   // ── Morph Animations ──
   late AnimationController _morphController;
   late Animation<double> _morphProgress;
+
+  // ── Control Mode ──
+  ControlMode _controlMode = ControlMode.touch;
 
   // ── Net position (moved by tilt or pan gesture) ──
   Offset _netPosition = const Offset(0.5, 0.5); // normalized 0-1
@@ -148,18 +151,50 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
     );
 
     _startCountdown();
-    _initSensors();
+    _updateSensorSubscription();
   }
 
-  void _initSensors() {
-    _sensorSubscription = accelerometerEventStream().listen((event) {
-      if (!mounted || _hasCaught) return;
-      setState(() {
-        double dx = (_netPosition.dx - event.x * 0.007).clamp(0.05, 0.95);
-        double dy = (_netPosition.dy + event.y * 0.007).clamp(0.05, 0.95);
-        _netPosition = Offset(dx, dy);
-      });
-    }, onError: (_) {});
+  void _updateSensorSubscription() {
+    _sensorSubscription?.cancel();
+    _sensorSubscription = null;
+    if (_controlMode == ControlMode.tilt && !_hasCaught) {
+      _sensorSubscription = accelerometerEventStream().listen((event) {
+        if (!mounted || _hasCaught) return;
+        setState(() {
+          double dx = (_netPosition.dx - event.x * 0.007).clamp(0.05, 0.95);
+          double dy = (_netPosition.dy + event.y * 0.007).clamp(0.05, 0.95);
+          _netPosition = Offset(dx, dy);
+        });
+      }, onError: (_) {});
+    }
+  }
+
+  Widget _buildModeButton(ControlMode mode, String label) {
+    final isSelected = _controlMode == mode;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() {
+          _controlMode = mode;
+          _updateSensorSubscription();
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? const Color(0xFF8BA5F8) : Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
   }
 
   List<Offset> _generateClouds() {
@@ -226,7 +261,7 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
     if (_hasCaught) return;
 
     GamePlane? closestPlane;
-    double minDistance = 55.0; // Net radius threshold
+    double minDistance = 70.0; // Net radius threshold
     Offset closestPlaneNorm = Offset.zero;
     bool isAnyPlaneNear = false;
 
@@ -236,7 +271,7 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
       final netPx = Offset(_netPosition.dx * screenSize.width, _netPosition.dy * screenSize.height);
 
       final dist = (planePx - netPx).distance;
-      if (dist < 95.0) {
+      if (dist < 110.0) {
         isAnyPlaneNear = true;
       }
       if (dist < minDistance) {
@@ -339,6 +374,18 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
     );
   }
 
+  void _updateTouchPosition(Offset localPosition, Size size) {
+    if (_controlMode != ControlMode.touch) return;
+    // Offset the net slightly above the finger (e.g. 60 pixels) so the finger doesn't block the view of the net.
+    final targetY = localPosition.dy - 60.0;
+    setState(() {
+      _netPosition = Offset(
+        (localPosition.dx / size.width).clamp(0.05, 0.95),
+        (targetY / size.height).clamp(0.05, 0.95),
+      );
+    });
+  }
+
   @override
   void dispose() {
     _gameTickController.dispose();
@@ -356,14 +403,22 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFACC2FA),
       body: GestureDetector(
+        onPanStart: (details) {
+          if (_hasCaught) return;
+          _updateTouchPosition(details.localPosition, size);
+        },
         onPanUpdate: (details) {
           if (_hasCaught) return;
-          setState(() {
-            _netPosition = Offset(
-              (_netPosition.dx + details.delta.dx / size.width).clamp(0.05, 0.95),
-              (_netPosition.dy + details.delta.dy / size.height).clamp(0.05, 0.95),
-            );
-          });
+          if (_controlMode == ControlMode.touch) {
+            _updateTouchPosition(details.localPosition, size);
+          } else {
+            setState(() {
+              _netPosition = Offset(
+                (_netPosition.dx + details.delta.dx / size.width).clamp(0.05, 0.95),
+                (_netPosition.dy + details.delta.dy / size.height).clamp(0.05, 0.95),
+              );
+            });
+          }
         },
         child: AnimatedBuilder(
           animation: Listenable.merge([_gameTickController, _morphProgress]),
@@ -400,40 +455,61 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
                     SafeArea(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white.withOpacity(0.3)),
-                              ),
-                              child: Text(
-                                '${_secondsLeft}s',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: LinearProgressIndicator(
-                                    value: _secondsLeft /
-                                        (gameState.gameConfig?.gameWindowSeconds ?? 60),
-                                    backgroundColor: Colors.white.withOpacity(0.2),
-                                    valueColor: const AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                  ),
+                                  child: Text(
+                                    '${_secondsLeft}s',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    minHeight: 6,
                                   ),
                                 ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: _secondsLeft /
+                                            (gameState.gameConfig?.gameWindowSeconds ?? 60),
+                                        backgroundColor: Colors.white.withOpacity(0.2),
+                                        valueColor: const AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
+                                        ),
+                                        minHeight: 6,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(25),
+                                border: Border.all(color: Colors.white.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildModeButton(ControlMode.touch, 'Finger Touch'),
+                                  _buildModeButton(ControlMode.tilt, 'Hand Gesture (Tilt)'),
+                                ],
                               ),
                             ),
                           ],
@@ -676,16 +752,16 @@ class _GameCanvasPainter extends CustomPainter {
     if (isHoveringClose && !hasCaught) {
       final glowPaint = Paint()
         ..color = Colors.white.withOpacity(0.35)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 18);
-      canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 80, height: 65), glowPaint);
+        ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 22);
+      canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 105, height: 85), glowPaint);
     }
 
     // Woven Net Bag/Pocket (Hanging down, clean white)
     final netBagPath = Path()
-      ..moveTo(-35, 5)
-      ..quadraticBezierTo(-25, 75, 0, 95)
-      ..quadraticBezierTo(25, 75, 35, 5)
-      ..quadraticBezierTo(0, 15, -35, 5)
+      ..moveTo(-45, 5)
+      ..quadraticBezierTo(-32, 95, 0, 120)
+      ..quadraticBezierTo(32, 95, 45, 5)
+      ..quadraticBezierTo(0, 20, -45, 5)
       ..close();
     
     final netBagPaint = Paint()
@@ -702,12 +778,12 @@ class _GameCanvasPainter extends CustomPainter {
     // Cross lines for the net pocket bag mesh
     final meshPaint = Paint()
       ..color = Colors.white.withOpacity(0.2)
-      ..strokeWidth = 1;
-    for (double i = -25; i <= 25; i += 8) {
-      canvas.drawLine(Offset(i, 8), Offset(i / 1.8, 88), meshPaint);
+      ..strokeWidth = 1.2;
+    for (double i = -32; i <= 32; i += 10) {
+      canvas.drawLine(Offset(i, 8), Offset(i / 1.8, 110), meshPaint);
     }
-    for (double y = 15; y <= 85; y += 12) {
-      final widthAtY = 35 * (1.0 - (y - 15) / 130);
+    for (double y = 15; y <= 110; y += 15) {
+      final widthAtY = 45 * (1.0 - (y - 15) / 160);
       canvas.drawLine(Offset(-widthAtY, y), Offset(widthAtY, y), meshPaint);
     }
 
@@ -722,15 +798,15 @@ class _GameCanvasPainter extends CustomPainter {
     // White rim circle (ellipse style)
     final rimPaint = Paint()
       ..color = Colors.white
-      ..strokeWidth = 4.5
+      ..strokeWidth = 5.0
       ..style = PaintingStyle.stroke;
-    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 70, height: 55), rimPaint);
+    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 90, height: 70), rimPaint);
 
     final rimInnerPaint = Paint()
       ..color = Colors.white.withOpacity(0.5)
-      ..strokeWidth = 1.5
+      ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
-    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 66, height: 51), rimInnerPaint);
+    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 85, height: 65), rimInnerPaint);
 
     canvas.restore();
   }
