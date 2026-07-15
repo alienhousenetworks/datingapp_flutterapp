@@ -122,8 +122,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
             onOpenFilters: () => FeedFilterSheet.show(context),
           ),
           const Positioned(
-            bottom: 100,
-            right: 20,
+            bottom: 140,
+            right: 16,
             child: _ScrollHint(),
           ),
         ],

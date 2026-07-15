@@ -123,16 +123,10 @@ class AppConstants {
     'L03': 'Immersive',
     'L04': 'Minimal',
     'L05': 'Bold',
-    'L06': 'Vibrant',
-    'L07': 'Cyan Glow',
-    'L08': 'Moody Radial',
-    'L09': 'Cyberpunk',
-    'L10': 'Warm Pinkish',
   };
 
   static const List<String> layoutIds = [
     'L01', 'L02', 'L03', 'L04', 'L05',
-    'L06', 'L07', 'L08', 'L09', 'L10',
   ];
 
   // Backgrounds and their variants (bg_variant_id → color_token on backend)

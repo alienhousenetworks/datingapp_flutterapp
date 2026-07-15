@@ -1,9 +1,11 @@
-/// Layout styles for feed profile cards (L01–L10).
+/// Layout styles for feed profile cards (L01–L05).
 /// Backend assigns stable layout_id; Flutter owns the visual treatment.
 class FeedLayoutStyle {
   final String layoutId;
   final String name;
   final String description;
+  /// Fraction of available content height used by the photo area (0–1).
+  final double photoHeightFactor;
   final double photoWidthFactor;
   final double photoRotation;
   final bool photoOnLeft;
@@ -13,20 +15,27 @@ class FeedLayoutStyle {
   final double borderRadius;
   final double borderWidth;
   final bool showAccentBorder;
+  final bool useGlassmorphism;
+  final bool useEditorialSplit;
+  final bool usePosterBold;
 
   const FeedLayoutStyle({
     required this.layoutId,
     required this.name,
     required this.description,
-    this.photoWidthFactor = 0.55,
-    this.photoRotation = -0.03,
+    this.photoHeightFactor = 0.72,
+    this.photoWidthFactor = 0.88,
+    this.photoRotation = 0,
     this.photoOnLeft = false,
     this.fullBleedPhoto = false,
     this.compactCard = false,
     this.boldTypography = false,
-    this.borderRadius = 12,
+    this.borderRadius = 20,
     this.borderWidth = 0,
     this.showAccentBorder = false,
+    this.useGlassmorphism = false,
+    this.useEditorialSplit = false,
+    this.usePosterBold = false,
   });
 }
 
@@ -34,91 +43,60 @@ class FeedLayoutCatalog {
   static const l01 = FeedLayoutStyle(
     layoutId: 'L01',
     name: 'Classic',
-    description: 'Photo top, profile info bottom',
-    photoWidthFactor: 0.55,
+    description: 'Sleek glassmorphism frame with a floating card',
+    photoHeightFactor: 0.78,
+    photoWidthFactor: 0.86,
+    photoRotation: 0,
+    borderRadius: 24,
+    useGlassmorphism: true,
   );
 
   static const l02 = FeedLayoutStyle(
     layoutId: 'L02',
     name: 'Split',
-    description: 'Photo left, info right',
-    photoWidthFactor: 0.42,
-    photoOnLeft: true,
+    description: 'Asymmetric editorial magazine page split',
+    photoHeightFactor: 0.76,
+    photoWidthFactor: 0.5,
     photoRotation: 0,
+    borderRadius: 18,
+    useEditorialSplit: true,
   );
 
   static const l03 = FeedLayoutStyle(
     layoutId: 'L03',
     name: 'Immersive',
-    description: 'Full-bleed photo with overlay text',
+    description: 'Cinematic full-bleed with luxury details overlay',
     fullBleedPhoto: true,
-    photoWidthFactor: 0.92,
+    photoHeightFactor: 1.0,
+    photoWidthFactor: 1.0,
     photoRotation: 0,
+    borderRadius: 0,
   );
 
   static const l04 = FeedLayoutStyle(
     layoutId: 'L04',
     name: 'Minimal',
-    description: 'Compact card with accent border',
+    description: 'High-contrast clean art gallery card',
     compactCard: true,
-    photoWidthFactor: 0.45,
-    borderRadius: 8,
+    photoHeightFactor: 0.68,
+    photoWidthFactor: 0.78,
+    borderRadius: 16,
     showAccentBorder: true,
-    borderWidth: 2,
+    borderWidth: 2.5,
   );
 
   static const l05 = FeedLayoutStyle(
     layoutId: 'L05',
     name: 'Bold',
-    description: 'Large typography hero layout',
+    description: 'Typographic streetwear poster layout',
     boldTypography: true,
-    photoWidthFactor: 0.5,
-    photoRotation: 0.02,
-  );
-
-  static const l06 = FeedLayoutStyle(
-    layoutId: 'L06',
-    name: 'Vibrant',
-    description: 'Sunset gradient emphasis',
-    photoWidthFactor: 0.58,
-    photoRotation: -0.05,
-  );
-
-  static const l07 = FeedLayoutStyle(
-    layoutId: 'L07',
-    name: 'Cyan Glow',
-    description: 'Cyan to green gradient emphasis',
-    photoWidthFactor: 0.52,
-    showAccentBorder: true,
-    borderWidth: 1.5,
-  );
-
-  static const l08 = FeedLayoutStyle(
-    layoutId: 'L08',
-    name: 'Moody Radial',
-    description: 'Dark moody radial gradient',
-    photoWidthFactor: 0.48,
-    photoRotation: 0.04,
-    compactCard: true,
-  );
-
-  static const l09 = FeedLayoutStyle(
-    layoutId: 'L09',
-    name: 'Cyberpunk',
-    description: 'Neon pink to neon cyan',
-    boldTypography: true,
-    photoWidthFactor: 0.6,
+    photoHeightFactor: 0.88,
+    photoWidthFactor: 0.92,
+    photoRotation: -0.025,
+    borderRadius: 20,
     showAccentBorder: true,
     borderWidth: 2,
-    borderRadius: 4,
-  );
-
-  static const l10 = FeedLayoutStyle(
-    layoutId: 'L10',
-    name: 'Warm Pinkish',
-    description: 'Warm pinkish glow',
-    photoWidthFactor: 0.54,
-    photoRotation: -0.02,
+    usePosterBold: true,
   );
 
   static final Map<String, FeedLayoutStyle> _catalog = {
@@ -127,11 +105,6 @@ class FeedLayoutCatalog {
     'L03': l03,
     'L04': l04,
     'L05': l05,
-    'L06': l06,
-    'L07': l07,
-    'L08': l08,
-    'L09': l09,
-    'L10': l10,
   };
 
   static FeedLayoutStyle resolve(String? layoutId) =>

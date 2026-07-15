@@ -299,15 +299,49 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
 
   void _onPlaneCaught(GamePlane gp) async {
     final notifier = ref.read(catchGameProvider.notifier);
-    await notifier.catchPlane(gp.id);
-    await notifier.planeCaught();
-    _morphController.forward().then((_) {
+    try {
+      await notifier.catchPlane(gp.id);
+      var phase = ref.read(catchGameProvider).phase;
+      if (phase == GamePhase.error) {
+        _showCatchError(ref.read(catchGameProvider).error);
+        return;
+      }
+      await notifier.planeCaught();
+      phase = ref.read(catchGameProvider).phase;
+      if (phase == GamePhase.error ||
+          ref.read(catchGameProvider).catchResult == null) {
+        _showCatchError(ref.read(catchGameProvider).error);
+        return;
+      }
+      await _morphController.forward();
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const MessageRevealScreen()),
         );
       }
+    } catch (e) {
+      _showCatchError(e.toString());
+    }
+  }
+
+  void _showCatchError(String? message) {
+    if (!mounted) return;
+    setState(() {
+      _hasCaught = false;
     });
+    _gameTickController.repeat();
+    _startCountdown();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          (message != null && message.isNotEmpty)
+              ? message
+              : 'Could not catch that plane. Try another.',
+        ),
+        backgroundColor: Colors.red.shade800,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Offset _planePositionNorm(double t, int seed) {

@@ -232,16 +232,41 @@ class CatchGameNotifier extends StateNotifier<CatchGameState> {
     }
   }
 
+  /// Active delivery id — prefer catch-result (post-catch) then delivery.
+  String? get _activeDeliveryId {
+    final fromCatch = state.catchResult?.deliveryId;
+    if (fromCatch != null && fromCatch.isNotEmpty) return fromCatch;
+    final fromDelivery = state.delivery?.id;
+    if (fromDelivery != null && fromDelivery.isNotEmpty) return fromDelivery;
+    final fromConfig = state.gameConfig?.deliveryId;
+    if (fromConfig != null && fromConfig.isNotEmpty) return fromConfig;
+    return null;
+  }
+
   /// Recipient tapped CONNECT
   Future<void> connect() async {
-    final deliveryId = state.delivery?.id;
-    if (deliveryId == null) return;
+    final deliveryId = _activeDeliveryId;
+    if (deliveryId == null) {
+      state = state.copyWith(
+        phase: GamePhase.error,
+        error: 'Missing delivery id. Catch the plane again.',
+      );
+      return;
+    }
 
     try {
       final conversationId = await _service.connect(deliveryId);
+      if (conversationId.isEmpty) {
+        state = state.copyWith(
+          phase: GamePhase.error,
+          error: 'Connect succeeded but no conversation was returned.',
+        );
+        return;
+      }
       state = state.copyWith(
         phase: GamePhase.connected,
         conversationId: conversationId,
+        clearError: true,
       );
     } catch (e) {
       state = state.copyWith(phase: GamePhase.error, error: e.toString());
@@ -250,7 +275,7 @@ class CatchGameNotifier extends StateNotifier<CatchGameState> {
 
   /// Recipient tapped PASS or decision timer expired
   Future<void> pass() async {
-    final deliveryId = state.delivery?.id;
+    final deliveryId = _activeDeliveryId;
     if (deliveryId != null) {
       try {
         await _service.pass(deliveryId);

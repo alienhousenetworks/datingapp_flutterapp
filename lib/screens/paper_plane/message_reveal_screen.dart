@@ -115,17 +115,26 @@ class _MessageRevealScreenState extends ConsumerState<MessageRevealScreen>
     if (!mounted) return;
 
     final state = ref.read(catchGameProvider);
-    if (state.phase == GamePhase.connected && state.conversationId != null) {
+    final convId = state.conversationId;
+    if (state.phase == GamePhase.connected &&
+        convId != null &&
+        convId.isNotEmpty) {
       setState(() {
         _showSuccessOverlay = true;
       });
     } else {
       setState(() => _isActing = false);
       _startTimer(); // resume timer
+      final err = state.error?.trim();
+      final message = (err != null && err.isNotEmpty)
+          ? err
+          : 'Could not connect. Try again.';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Something went wrong. Try again.'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red.shade800,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
         ),
       );
     }

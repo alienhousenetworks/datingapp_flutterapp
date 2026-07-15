@@ -11,8 +11,14 @@ import '../../theme/feed_card_theme.dart';
 import '../../theme/feed_layout.dart';
 import '../../theme/discovery_background.dart';
 import '../../utils/option_resolver.dart';
+import '../watermark_overlay.dart';
 
-/// Figma Alien-House feed card:
+/// Brand accent used for CTAs when theme accents are too muted.
+const Color _kBrandPink = Color(0xFFFF2E74);
+const Color _kBrandPinkDeep = Color(0xFFE91E63);
+const Color _kLikedGreen = Color(0xFF5FD068);
+const Color _kLikedGreenDeep = Color(0xFF2E9B4A);
+
 /// Horizontal pages: Hero → Photo focus → Details → Turn-ons
 /// Vertical scroll between users handled by parent FeedScreen.
 class FeedProfileCard extends ConsumerStatefulWidget {
@@ -79,7 +85,9 @@ class _FeedProfileCardState extends ConsumerState<FeedProfileCard> {
               "It's a match with ${profile.displayUsername}!",
               style: GoogleFonts.outfit(),
             ),
-            backgroundColor: const Color(0xFF1E1E1E),
+            backgroundColor: _kBrandPinkDeep,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       } else if (result.success) {
@@ -90,7 +98,9 @@ class _FeedProfileCardState extends ConsumerState<FeedProfileCard> {
               style: GoogleFonts.outfit(),
             ),
             backgroundColor: const Color(0xFF1E1E1E),
+            behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       } else if (result.alreadyLiked) {
@@ -101,6 +111,8 @@ class _FeedProfileCardState extends ConsumerState<FeedProfileCard> {
               style: GoogleFonts.outfit(),
             ),
             backgroundColor: const Color(0xFF1E1E1E),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -119,21 +131,26 @@ class _FeedProfileCardState extends ConsumerState<FeedProfileCard> {
       profile.turnOns,
       options.turnOns,
     );
-    final bgSpec = DiscoveryBackgroundCatalog.resolveFromTheme(profile.themeConfig);
+    final bgSpec =
+        DiscoveryBackgroundCatalog.resolveFromTheme(profile.themeConfig);
+    final hasActions = widget.onLike != null || widget.onDm != null;
 
     return Stack(
       fit: StackFit.expand,
       children: [
         DiscoveryBackground(spec: bgSpec),
+        // Soft vignette so content stays readable on busy themes
         DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
+                Colors.black.withValues(alpha: 0.15),
                 Colors.transparent,
-                Colors.black.withValues(alpha: 0.65),
+                Colors.black.withValues(alpha: 0.72),
               ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
+              stops: const [0.0, 0.35, 1.0],
             ),
           ),
         ),
@@ -141,101 +158,77 @@ class _FeedProfileCardState extends ConsumerState<FeedProfileCard> {
           bottom: false,
           child: Column(
             children: [
-              const SizedBox(height: 56),
+              const SizedBox(height: 52),
               if (liked)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _LikedBadge(),
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: const _LikedBadge(),
                 ),
               Expanded(
-                child: Stack(
-                  children: [
-                    PageView(
-                      controller: _hCtrl,
-                      onPageChanged: (p) => setState(() => _page = p),
-                      children: hasImages
-                          ? [
-                              _HeroPage(
-                                profile: profile,
-                                theme: theme,
-                                layoutStyle: layoutStyle,
-                                images: images,
-                                photoIdx: _photoIdx,
-                                onPhotoChanged: (i) =>
-                                    setState(() => _photoIdx = i),
-                              ),
-                              _PhotoFocusPage(
-                                profile: profile,
-                                theme: theme,
-                                images: images,
-                                photoIdx: _photoIdx,
-                                onPhotoChanged: (i) =>
-                                    setState(() => _photoIdx = i),
-                                onSwipe: _goPhoto,
-                              ),
-                              _DetailsPage(
-                                profile: profile,
-                                theme: theme,
-                                languageLabels: languageLabels,
-                              ),
-                              _TurnOnsPage(
-                                profile: profile,
-                                theme: theme,
-                                interestLabels: interestLabels,
-                              ),
-                            ]
-                          : [
-                              _CharacterHeroPage(
-                                profile: profile,
-                                theme: theme,
-                                layoutStyle: layoutStyle,
-                                large: false,
-                              ),
-                              _DetailsPage(
-                                profile: profile,
-                                theme: theme,
-                                languageLabels: languageLabels,
-                              ),
-                              _TurnOnsPage(
-                                profile: profile,
-                                theme: theme,
-                                interestLabels: interestLabels,
-                              ),
-                            ],
-                    ),
-                    Positioned(
-                      bottom: 88,
-                      left: 0,
-                      right: 0,
-                      child: _PageDots(count: pageCount, active: _page),
-                    ),
-                    if (widget.onLike != null)
-                      Positioned(
-                        bottom: 132,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: _LikeButton(
-                            liked: liked,
-                            loading: _isLiking,
-                            onTap: _handleLike,
+                child: PageView(
+                  controller: _hCtrl,
+                  onPageChanged: (p) => setState(() => _page = p),
+                  children: hasImages
+                      ? [
+                          _HeroPage(
+                            profile: profile,
+                            theme: theme,
+                            layoutStyle: layoutStyle,
+                            images: images,
+                            photoIdx: _photoIdx,
+                            onPhotoChanged: (i) =>
+                                setState(() => _photoIdx = i),
                           ),
-                        ),
-                      ),
-                  ],
+                          _PhotoFocusPage(
+                            profile: profile,
+                            theme: theme,
+                            images: images,
+                            photoIdx: _photoIdx,
+                            onPhotoChanged: (i) =>
+                                setState(() => _photoIdx = i),
+                            onSwipe: _goPhoto,
+                          ),
+                          _DetailsPage(
+                            profile: profile,
+                            theme: theme,
+                            languageLabels: languageLabels,
+                          ),
+                          _TurnOnsPage(
+                            profile: profile,
+                            theme: theme,
+                            interestLabels: interestLabels,
+                          ),
+                        ]
+                      : [
+                          _CharacterHeroPage(
+                            profile: profile,
+                            theme: theme,
+                            layoutStyle: layoutStyle,
+                          ),
+                          _DetailsPage(
+                            profile: profile,
+                            theme: theme,
+                            languageLabels: languageLabels,
+                          ),
+                          _TurnOnsPage(
+                            profile: profile,
+                            theme: theme,
+                            interestLabels: interestLabels,
+                          ),
+                        ],
                 ),
               ),
-              if (widget.onDm != null)
-                SafeArea(
-                  top: false,
-                  left: false,
-                  right: false,
-                  bottom: true,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                    child: _DmButton(onTap: widget.onDm!),
-                  ),
-                ),
+              // Unified bottom chrome: dots + actions
+              _BottomChrome(
+                pageCount: pageCount,
+                activePage: _page,
+                theme: theme,
+                liked: liked,
+                liking: _isLiking,
+                onLike: widget.onLike != null ? _handleLike : null,
+                onDm: widget.onDm,
+                hasActions: hasActions,
+              ),
             ],
           ),
         ),
@@ -244,7 +237,132 @@ class _FeedProfileCardState extends ConsumerState<FeedProfileCard> {
   }
 }
 
-// ─── Page 0 (with photos): Polaroid hero ─────────────────────
+// ─── Bottom chrome: dots + like + message ────────────────────
+class _BottomChrome extends StatelessWidget {
+  final int pageCount;
+  final int activePage;
+  final FeedCardTheme theme;
+  final bool liked;
+  final bool liking;
+  final VoidCallback? onLike;
+  final VoidCallback? onDm;
+  final bool hasActions;
+
+  const _BottomChrome({
+    required this.pageCount,
+    required this.activePage,
+    required this.theme,
+    required this.liked,
+    required this.liking,
+    required this.onLike,
+    required this.onDm,
+    required this.hasActions,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 12 + bottomInset),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.transparent,
+            Colors.black.withValues(alpha: 0.55),
+            Colors.black.withValues(alpha: 0.82),
+          ],
+          stops: const [0.0, 0.35, 1.0],
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _PageDots(
+            count: pageCount,
+            active: activePage,
+            accent: theme.accentColor,
+          ),
+          if (hasActions) ...[
+            const SizedBox(height: 14),
+            _ActionRow(
+              theme: theme,
+              liked: liked,
+              liking: liking,
+              onLike: onLike,
+              onDm: onDm,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionRow extends StatelessWidget {
+  final FeedCardTheme theme;
+  final bool liked;
+  final bool liking;
+  final VoidCallback? onLike;
+  final VoidCallback? onDm;
+
+  const _ActionRow({
+    required this.theme,
+    required this.liked,
+    required this.liking,
+    required this.onLike,
+    required this.onDm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasLike = onLike != null;
+    final hasDm = onDm != null;
+
+    if (hasLike && hasDm) {
+      return Row(
+        children: [
+          _LikeButton(
+            liked: liked,
+            loading: liking,
+            onTap: onLike!,
+            compact: true,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _DmButton(
+              onTap: onDm!,
+              accent: theme.accentColor,
+              primary: theme.primaryColor,
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (hasLike) {
+      return Center(
+        child: _LikeButton(
+          liked: liked,
+          loading: liking,
+          onTap: onLike!,
+          compact: false,
+        ),
+      );
+    }
+
+    return _DmButton(
+      onTap: onDm!,
+      accent: theme.accentColor,
+      primary: theme.primaryColor,
+    );
+  }
+}
+
+// ─── Page 0 (with photos): layout-aware hero ─────────────────
 class _HeroPage extends StatefulWidget {
   final UserProfile profile;
   final FeedCardTheme theme;
@@ -289,221 +407,506 @@ class _HeroPageState extends State<_HeroPage> {
     super.dispose();
   }
 
+  Widget _photoPager({BoxFit fit = BoxFit.cover}) {
+    return PageView.builder(
+      controller: _heroPhotoCtrl,
+      itemCount: widget.images.length,
+      onPageChanged: widget.onPhotoChanged,
+      itemBuilder: (_, i) => _FeedImage(
+        url: widget.images[i].url,
+        fit: fit,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+    final style = widget.layoutStyle;
 
-    if (widget.layoutStyle.fullBleedPhoto) {
-      return Stack(
-        children: [
-          Positioned.fill(
-            child: PageView.builder(
-              controller: _heroPhotoCtrl,
-              itemCount: widget.images.length,
-              onPageChanged: widget.onPhotoChanged,
-              itemBuilder: (_, i) => _FeedImage(
-                url: widget.images[i].url,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxH = constraints.maxHeight;
+        final maxW = constraints.maxWidth;
+
+        // L01: Classic glass card
+        if (style.useGlassmorphism) {
+          final cardH = (maxH * style.photoHeightFactor).clamp(280.0, maxH - 8);
+          final cardW = (maxW * style.photoWidthFactor).clamp(240.0, maxW - 32);
+          return Center(
+            child: Container(
+              height: cardH,
+              width: cardW,
               decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(style.borderRadius),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  width: 1.5,
+                ),
                 gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                   colors: [
-                    Colors.black.withOpacity(0.15),
-                    Colors.black.withOpacity(0.85),
+                    Colors.white.withValues(alpha: 0.14),
+                    Colors.white.withValues(alpha: 0.04),
                   ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.theme.primaryColor.withValues(alpha: 0.28),
+                    blurRadius: 28,
+                    offset: const Offset(0, 14),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(style.borderRadius - 1),
+                child: Column(
+                  children: [
+                    Expanded(
+                      flex: 72,
+                      child: Container(
+                        margin: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(
+                            style.borderRadius - 8,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            style.borderRadius - 8,
+                          ),
+                          child: _photoPager(),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 28,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Flexible(
+                              child: _ProfileHeader(
+                                profile: widget.profile,
+                                theme: widget.theme,
+                                layoutStyle: style,
+                                dense: true,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            _SwipeHint(
+                              text: 'SWIPE PHOTOS →',
+                              color: Colors.white.withValues(alpha: 0.7),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-          Positioned(
-            left: 24,
-            right: 24,
-            bottom: 110,
+          );
+        }
+
+        // L02: Editorial split
+        if (style.useEditorialSplit) {
+          final cardH = (maxH * style.photoHeightFactor).clamp(260.0, maxH - 8);
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Center(
+              child: Container(
+                height: cardH,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(style.borderRadius),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.14),
+                  ),
+                  color: Colors.black.withValues(alpha: 0.22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.theme.accentColor.withValues(alpha: 0.22),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(style.borderRadius - 1),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 12,
+                        child: _photoPager(),
+                      ),
+                      Container(
+                        width: 3,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              widget.theme.accentColor.withValues(alpha: 0.2),
+                              widget.theme.accentColor,
+                              widget.theme.primaryColor,
+                              widget.theme.accentColor.withValues(alpha: 0.2),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 9,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.15),
+                                Colors.black.withValues(alpha: 0.45),
+                              ],
+                            ),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _ProfileHeader(
+                                  profile: widget.profile,
+                                  theme: widget.theme,
+                                  layoutStyle: style,
+                                  alignLeft: true,
+                                  dense: true,
+                                ),
+                              ),
+                              _SwipeHint(
+                                text: 'SWIPE PHOTOS →',
+                                color: Colors.white.withValues(alpha: 0.55),
+                                alignLeft: true,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        // L03: Full-bleed cinematic
+        if (style.fullBleedPhoto) {
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(child: _photoPager()),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withValues(alpha: 0.05),
+                        Colors.black.withValues(alpha: 0.25),
+                        Colors.black.withValues(alpha: 0.88),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.0, 0.4, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 12,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    color: Colors.black.withValues(alpha: 0.42),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.16),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: widget.theme.primaryColor.withValues(alpha: 0.25),
+                        blurRadius: 18,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _ProfileHeader(
+                        profile: widget.profile,
+                        theme: widget.theme,
+                        layoutStyle: style,
+                        dense: true,
+                      ),
+                      const SizedBox(height: 8),
+                      _SwipeHint(
+                        text: 'SWIPE FOR PHOTOS →',
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        // L04: Minimal gallery
+        if (style.compactCard) {
+          final cardH = (maxH * style.photoHeightFactor).clamp(240.0, maxH * 0.82);
+          final cardW = (maxW * style.photoWidthFactor).clamp(220.0, maxW - 40);
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                Container(
+                  height: cardH,
+                  width: cardW,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(style.borderRadius),
+                    border: Border.all(
+                      color: widget.theme.accentColor,
+                      width: style.borderWidth,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: widget.theme.accentColor.withValues(alpha: 0.35),
+                        blurRadius: 22,
+                        offset: const Offset(0, 8),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(style.borderRadius - 2),
+                    child: _photoPager(),
+                  ),
+                ),
+                const SizedBox(height: 14),
                 _ProfileHeader(
                   profile: widget.profile,
                   theme: widget.theme,
-                  layoutStyle: widget.layoutStyle,
+                  layoutStyle: style,
+                  dense: true,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 6),
                 _SwipeHint(
-                  text: 'SWIPE FOR PHOTOS →',
-                  color: widget.theme.textColor.withOpacity(0.9),
+                  text: 'SWIPE PHOTOS →',
+                  color: Colors.white.withValues(alpha: 0.65),
                 ),
               ],
             ),
-          ),
-        ],
-      );
-    }
+          );
+        }
 
-    if (widget.layoutStyle.photoOnLeft) {
-      return Container(
-        height: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        alignment: Alignment.center,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: width * widget.layoutStyle.photoWidthFactor,
-              height: width * 0.9,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(widget.layoutStyle.borderRadius),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                  border: widget.layoutStyle.showAccentBorder
-                      ? Border.all(
-                          color: widget.theme.accentColor,
-                          width: widget.layoutStyle.borderWidth,
-                        )
-                      : null,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(widget.layoutStyle.borderRadius),
-                  child: PageView.builder(
-                    controller: _heroPhotoCtrl,
-                    itemCount: widget.images.length,
-                    onPageChanged: widget.onPhotoChanged,
-                    itemBuilder: (_, i) => _FeedImage(
-                      url: widget.images[i].url,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
+        // L05: Bold streetwear poster (photo + overlay typography)
+        if (style.usePosterBold) {
+          final cardH = (maxH * style.photoHeightFactor).clamp(280.0, maxH - 4);
+          final cardW = (maxW * style.photoWidthFactor).clamp(260.0, maxW - 28);
+
+          Widget poster = Container(
+            height: cardH,
+            width: cardW,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(style.borderRadius),
+              border: Border.all(
+                color: widget.theme.accentColor.withValues(alpha: 0.85),
+                width: style.borderWidth,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.theme.accentColor.withValues(alpha: 0.4),
+                  blurRadius: 28,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 10),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  blurRadius: 18,
+                  offset: const Offset(4, 12),
+                ),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(style.borderRadius - 1),
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  _ProfileHeader(
-                    profile: widget.profile,
-                    theme: widget.theme,
-                    layoutStyle: widget.layoutStyle,
-                    alignLeft: true,
+                  _photoPager(),
+                  // Diagonal accent stripe (streetwear feel)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 6,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            widget.theme.accentColor,
+                            widget.theme.primaryColor,
+                            widget.theme.accentColor,
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  _SwipeHint(
-                    text: 'SWIPE PHOTOS →',
-                    color: widget.theme.textColor.withOpacity(0.7),
+                  // Bottom gradient for type
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: cardH * 0.48,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.55),
+                            Colors.black.withValues(alpha: 0.92),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Bold typography block
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 14,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: widget.theme.accentColor,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'NOW LIVE',
+                            style: GoogleFonts.outfit(
+                              color: _readableOn(widget.theme.accentColor),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.4,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _ProfileHeader(
+                          profile: widget.profile,
+                          theme: widget.theme,
+                          layoutStyle: style,
+                          alignLeft: true,
+                          dense: true,
+                          forceLightText: true,
+                        ),
+                        const SizedBox(height: 8),
+                        _SwipeHint(
+                          text: 'SWIPE PHOTOS →',
+                          color: Colors.white.withValues(alpha: 0.75),
+                          alignLeft: true,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      );
-    }
+          );
 
-    final double cardHeight = widget.layoutStyle.compactCard ? width * 0.82 : width * 0.95;
-    final double cardWidth = width * widget.layoutStyle.photoWidthFactor * 1.6;
+          if (style.photoRotation != 0) {
+            poster = Transform.rotate(
+              angle: style.photoRotation,
+              child: poster,
+            );
+          }
 
-    Widget photoContainer = Container(
-      height: cardHeight,
-      width: cardWidth,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(widget.layoutStyle.borderRadius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-        border: widget.layoutStyle.showAccentBorder
-            ? Border.all(
-                color: widget.theme.accentColor,
-                width: widget.layoutStyle.borderWidth,
-              )
-            : null,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(widget.layoutStyle.borderRadius),
-        child: Stack(
-          children: [
-            PageView.builder(
-              controller: _heroPhotoCtrl,
-              itemCount: widget.images.length,
-              onPageChanged: widget.onPhotoChanged,
-              itemBuilder: (_, i) => _FeedImage(
-                url: widget.images[i].url,
-                fit: BoxFit.cover,
-              ),
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: poster,
             ),
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 50,
-              child: Container(
+          );
+        }
+
+        // Fallback
+        final cardH = (maxH * 0.72).clamp(260.0, maxH - 8);
+        final cardW = (maxW * 0.88).clamp(240.0, maxW - 32);
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                height: cardH,
+                width: cardW,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.black.withOpacity(0.5),
-                      Colors.transparent,
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
+                  borderRadius: BorderRadius.circular(style.borderRadius),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(style.borderRadius),
+                  child: _photoPager(),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (widget.layoutStyle.photoRotation != 0) {
-      photoContainer = Transform.rotate(
-        angle: widget.layoutStyle.photoRotation,
-        child: photoContainer,
-      );
-    }
-
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          photoContainer,
-          const SizedBox(height: 20),
-          _ProfileHeader(
-            profile: widget.profile,
-            theme: widget.theme,
-            layoutStyle: widget.layoutStyle,
+              const SizedBox(height: 12),
+              _ProfileHeader(
+                profile: widget.profile,
+                theme: widget.theme,
+                layoutStyle: style,
+                dense: true,
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          _SwipeHint(
-            text: 'SWIPE FOR PHOTOS →',
-            color: widget.theme.textColor.withOpacity(0.7),
-          ),
-          const SizedBox(height: 220),
-        ],
-      ),
+        );
+      },
     );
   }
 }
 
-// ─── Page 1: Big photo focus (Figma 10.36.04 layout) ─────────
+// ─── Page 1: Big photo focus ─────────────────────────────────
 class _PhotoFocusPage extends StatefulWidget {
   final UserProfile profile;
   final FeedCardTheme theme;
@@ -527,6 +930,7 @@ class _PhotoFocusPage extends StatefulWidget {
 
 class _PhotoFocusPageState extends State<_PhotoFocusPage> {
   late PageController _photoCtrl;
+
   @override
   void initState() {
     super.initState();
@@ -563,14 +967,14 @@ class _PhotoFocusPageState extends State<_PhotoFocusPage> {
       },
       child: Column(
         children: [
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             'PHOTOS',
             style: GoogleFonts.outfit(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
+              letterSpacing: 1.2,
             ),
           ),
           if (widget.profile.city?.isNotEmpty == true) ...[
@@ -588,34 +992,49 @@ class _PhotoFocusPageState extends State<_PhotoFocusPage> {
                   widget.profile.city!,
                   style: GoogleFonts.outfit(
                     color: Colors.white70,
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: PageView.builder(
-                  controller: _photoCtrl,
-                  itemCount: widget.images.length,
-                  onPageChanged: widget.onPhotoChanged,
-                  itemBuilder: (_, i) => _FeedImage(
-                    url: widget.images[i].url,
-                    fit: BoxFit.cover,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: widget.theme.accentColor.withValues(alpha: 0.45),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.theme.accentColor.withValues(alpha: 0.2),
+                      blurRadius: 18,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16.5),
+                  child: PageView.builder(
+                    controller: _photoCtrl,
+                    itemCount: widget.images.length,
+                    onPageChanged: widget.onPhotoChanged,
+                    itemBuilder: (_, i) => _FeedImage(
+                      url: widget.images[i].url,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           SizedBox(
-            height: 72,
+            height: 68,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -633,16 +1052,25 @@ class _PhotoFocusPageState extends State<_PhotoFocusPage> {
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: 64,
+                    width: 60,
                     margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: selected
-                            ? Colors.white
-                            : Colors.white.withOpacity(0.3),
-                        width: selected ? 3 : 1,
+                            ? widget.theme.accentColor
+                            : Colors.white.withValues(alpha: 0.28),
+                        width: selected ? 2.5 : 1,
                       ),
+                      boxShadow: selected
+                          ? [
+                              BoxShadow(
+                                color: widget.theme.accentColor
+                                    .withValues(alpha: 0.45),
+                                blurRadius: 10,
+                              ),
+                            ]
+                          : null,
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: _FeedImage(
@@ -655,10 +1083,10 @@ class _PhotoFocusPageState extends State<_PhotoFocusPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.only(top: 6, bottom: 4),
             child: _SwipeHint(
               text: 'TAP THUMBNAILS OR SWIPE → DETAILS',
-              color: widget.theme.textColor,
+              color: Colors.white.withValues(alpha: 0.75),
             ),
           ),
         ],
@@ -667,197 +1095,87 @@ class _PhotoFocusPageState extends State<_PhotoFocusPage> {
   }
 }
 
-// ─── Page 0 (no photos): Character hero (Figma 10.39.09) ─────
+// ─── Page 0 (no photos): Character hero ──────────────────────
 class _CharacterHeroPage extends StatelessWidget {
   final UserProfile profile;
   final FeedCardTheme theme;
   final FeedLayoutStyle layoutStyle;
-  final bool large;
 
   const _CharacterHeroPage({
     required this.profile,
     required this.theme,
     required this.layoutStyle,
-    this.large = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final w = MediaQuery.of(context).size.width;
+    // Reuse hero photo logic with a single avatar image when present
+    final avatar = profile.avatarUrl;
+    final images = avatar != null && avatar.isNotEmpty
+        ? [ProfileImage(id: 'avatar', url: avatar, order: 0, isPrimary: true)]
+        : <ProfileImage>[];
 
-    if (layoutStyle.fullBleedPhoto) {
-      return Stack(
-        children: [
-          Positioned.fill(
-            child: _FeedImage(
-              url: profile.avatarUrl ?? '',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.black.withOpacity(0.15),
-                    Colors.black.withOpacity(0.85),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 24,
-            right: 24,
-            bottom: 110,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _ProfileHeader(
-                  profile: profile,
-                  theme: theme,
-                  layoutStyle: layoutStyle,
-                ),
-                const SizedBox(height: 12),
-                _SwipeHint(
-                  text: 'SWIPE FOR DETAILS →',
-                  color: theme.textColor.withOpacity(0.9),
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (layoutStyle.photoOnLeft) {
-      return Container(
-        height: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        alignment: Alignment.center,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+    if (images.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
-              width: w * layoutStyle.photoWidthFactor,
-              height: w * 0.9,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius: BorderRadius.circular(layoutStyle.borderRadius),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                  border: layoutStyle.showAccentBorder
-                      ? Border.all(
-                          color: theme.accentColor,
-                          width: layoutStyle.borderWidth,
-                        )
-                      : null,
+            Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [theme.primaryColor, theme.accentColor],
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(layoutStyle.borderRadius),
-                  child: _FeedImage(
-                    url: profile.avatarUrl ?? '',
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _ProfileHeader(
-                    profile: profile,
-                    theme: theme,
-                    layoutStyle: layoutStyle,
-                    alignLeft: true,
-                  ),
-                  const SizedBox(height: 12),
-                  _SwipeHint(
-                    text: 'SWIPE FOR DETAILS →',
-                    color: theme.textColor.withOpacity(0.7),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.primaryColor.withValues(alpha: 0.4),
+                    blurRadius: 24,
                   ),
                 ],
               ),
+              alignment: Alignment.center,
+              child: Text(
+                (profile.displayUsername.isNotEmpty
+                        ? profile.displayUsername[0]
+                        : '?')
+                    .toUpperCase(),
+                style: GoogleFonts.outfit(
+                  color: Colors.white,
+                  fontSize: 52,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            _ProfileHeader(
+              profile: profile,
+              theme: theme,
+              layoutStyle: layoutStyle,
+            ),
+            const SizedBox(height: 8),
+            _SwipeHint(
+              text: 'SWIPE FOR DETAILS →',
+              color: Colors.white.withValues(alpha: 0.7),
             ),
           ],
         ),
       );
     }
 
-    final double cardHeight = layoutStyle.compactCard ? w * 0.82 : w * 0.95;
-    final double cardWidth = w * layoutStyle.photoWidthFactor * 1.6;
-
-    Widget characterArt = Container(
-      height: cardHeight,
-      width: cardWidth,
-      decoration: BoxDecoration(
-        color: Colors.white10,
-        borderRadius: BorderRadius.circular(layoutStyle.borderRadius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-        border: layoutStyle.showAccentBorder
-            ? Border.all(
-                color: theme.accentColor,
-                width: layoutStyle.borderWidth,
-              )
-            : null,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: _FeedImage(
-        url: profile.avatarUrl ?? '',
-        fit: BoxFit.cover,
-      ),
-    );
-
-    if (layoutStyle.photoRotation != 0) {
-      characterArt = Transform.rotate(
-        angle: layoutStyle.photoRotation,
-        child: characterArt,
-      );
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          characterArt,
-          const SizedBox(height: 20),
-          _ProfileHeader(
-            profile: profile,
-            theme: theme,
-            layoutStyle: layoutStyle,
-          ),
-          const SizedBox(height: 16),
-          _SwipeHint(
-            text: 'SWIPE FOR DETAILS →',
-            color: theme.textColor.withOpacity(0.7),
-          ),
-          const SizedBox(height: 220),
-        ],
-      ),
+    return _HeroPage(
+      profile: profile,
+      theme: theme,
+      layoutStyle: layoutStyle,
+      images: images,
+      photoIdx: 0,
+      onPhotoChanged: (_) {},
     );
   }
 }
 
-// ─── Details page: intent, languages, bio ────────────────────
+// ─── Details page ────────────────────────────────────────────
 class _DetailsPage extends StatelessWidget {
   final UserProfile profile;
   final FeedCardTheme theme;
@@ -871,30 +1189,27 @@ class _DetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = theme.textColor;
-
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
           Text(
             'ABOUT',
             style: GoogleFonts.outfit(
               color: Colors.white,
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
+              letterSpacing: 1.1,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             profile.displayUsername,
             style: GoogleFonts.outfit(
-              color: textColor,
-              fontSize: 20,
+              color: theme.accentColor,
+              fontSize: 22,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -919,21 +1234,20 @@ class _DetailsPage extends StatelessWidget {
               ],
             ),
           ],
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           _DetailBlock(
             label: 'INTENT',
-            child: _Tag(
-              label: profile.intent ?? 'Not set',
-              theme: theme,
-            ),
+            accent: theme.accentColor,
+            child: _Tag(label: profile.intent ?? 'Not set', theme: theme),
           ),
           _DetailBlock(
             label: 'LANGUAGES',
+            accent: theme.accentColor,
             child: languageLabels.isEmpty
                 ? Text(
                     'Not set',
                     style: GoogleFonts.outfit(
-                      color: textColor.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.55),
                     ),
                   )
                 : Wrap(
@@ -946,32 +1260,32 @@ class _DetailsPage extends StatelessWidget {
           ),
           _DetailBlock(
             label: 'BIO',
+            accent: theme.accentColor,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(14),
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
+                  color: theme.accentColor.withValues(alpha: 0.28),
                 ),
               ),
               child: Text(
-                profile.bio?.isNotEmpty == true
-                    ? profile.bio!
-                    : 'No bio yet.',
+                profile.bio?.isNotEmpty == true ? profile.bio! : 'No bio yet.',
                 style: GoogleFonts.outfit(
-                  color: Colors.white70,
+                  color: Colors.white.withValues(alpha: 0.88),
                   fontSize: 14,
-                  height: 1.4,
+                  height: 1.45,
                 ),
               ),
             ),
           ),
           if (profile.gender != null || profile.sexuality != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Wrap(
               spacing: 8,
+              runSpacing: 8,
               children: [
                 if (profile.gender != null)
                   _Tag(label: profile.gender!, theme: theme),
@@ -980,12 +1294,11 @@ class _DetailsPage extends StatelessWidget {
               ],
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           _SwipeHint(
             text: 'SWIPE FOR TURN-ONS →',
-            color: textColor,
+            color: Colors.white.withValues(alpha: 0.75),
           ),
-          const SizedBox(height: 220),
         ],
       ),
     );
@@ -1008,33 +1321,35 @@ class _TurnOnsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
       child: Column(
         children: [
-          const SizedBox(height: 16),
           Text(
             'TURN ONS',
             style: GoogleFonts.outfit(
               color: Colors.white,
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
+              letterSpacing: 1.1,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           if (interestLabels.isEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(14),
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.1),
+                ),
               ),
               child: Text(
                 'Nothing listed yet',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
-                  color: theme.textColor.withOpacity(0.6),
+                  color: Colors.white.withValues(alpha: 0.55),
                   fontSize: 15,
                 ),
               ),
@@ -1048,35 +1363,49 @@ class _TurnOnsPage extends StatelessWidget {
                   .map(
                     (t) => Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
+                        horizontal: 16,
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        gradient: LinearGradient(
+                          colors: [
+                            theme.primaryColor.withValues(alpha: 0.55),
+                            theme.accentColor.withValues(alpha: 0.35),
+                          ],
+                        ),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: theme.accentColor.withOpacity(0.6),
+                          color: theme.accentColor.withValues(alpha: 0.65),
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.accentColor.withValues(alpha: 0.2),
+                            blurRadius: 10,
+                          ),
+                        ],
                       ),
                       child: Text(
                         '🔥 $t',
                         style: GoogleFonts.outfit(
-                          color: theme.textColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5,
                         ),
                       ),
                     ),
                   )
                   .toList(),
             ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 22),
           if (profile.mood != null)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
+                color: Colors.black.withValues(alpha: 0.28),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: theme.accentColor.withValues(alpha: 0.5),
+                ),
               ),
               child: Text(
                 '✨ ${profile.mood}',
@@ -1087,7 +1416,6 @@ class _TurnOnsPage extends StatelessWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 220),
         ],
       ),
     );
@@ -1100,12 +1428,16 @@ class _ProfileHeader extends StatelessWidget {
   final FeedCardTheme theme;
   final FeedLayoutStyle layoutStyle;
   final bool alignLeft;
+  final bool dense;
+  final bool forceLightText;
 
   const _ProfileHeader({
     required this.profile,
     required this.theme,
     required this.layoutStyle,
     this.alignLeft = false,
+    this.dense = false,
+    this.forceLightText = false,
   });
 
   @override
@@ -1113,65 +1445,64 @@ class _ProfileHeader extends StatelessWidget {
     final age = profile.age;
     final genderShort = _genderShort(profile.gender);
     final isBold = layoutStyle.boldTypography;
+    final titleColor = forceLightText ? Colors.white : Colors.white;
+    final nameSize = dense
+        ? (isBold ? 24.0 : 20.0)
+        : (isBold ? 28.0 : 24.0);
 
     return Column(
-      crossAxisAlignment: alignLeft ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      crossAxisAlignment:
+          alignLeft ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           '${profile.displayUsername}${age != null ? ', $age' : ''}${genderShort.isNotEmpty ? ' • $genderShort' : ''}',
           textAlign: alignLeft ? TextAlign.left : TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.outfit(
-            color: Colors.white,
-            fontSize: isBold ? 30 : 25,
+            color: titleColor,
+            fontSize: nameSize,
             fontWeight: isBold ? FontWeight.w900 : FontWeight.w800,
-            letterSpacing: isBold ? -1.0 : -0.5,
+            letterSpacing: isBold ? -0.8 : -0.4,
+            height: 1.1,
+            shadows: forceLightText || isBold
+                ? [
+                    Shadow(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: dense ? 6 : 8),
         Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 12,
-          runSpacing: 4,
+          alignment: alignLeft ? WrapAlignment.start : WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 6,
           children: [
             if (profile.distanceText.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  profile.distanceText,
-                  style: GoogleFonts.outfit(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              _MetaChip(
+                label: profile.distanceText,
+                accent: theme.accentColor,
               ),
             if (profile.sexuality != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  profile.sexuality!,
-                  style: GoogleFonts.outfit(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              _MetaChip(
+                label: profile.sexuality!,
+                accent: theme.accentColor,
               ),
             if (profile.isOnline)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF00E676).withOpacity(0.12),
+                  color: const Color(0xFF00E676).withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF00E676).withOpacity(0.3)),
+                  border: Border.all(
+                    color: const Color(0xFF00E676).withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1189,7 +1520,7 @@ class _ProfileHeader extends StatelessWidget {
                       'Online',
                       style: GoogleFonts.outfit(
                         color: const Color(0xFF00E676),
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1198,12 +1529,12 @@ class _ProfileHeader extends StatelessWidget {
               ),
           ],
         ),
-        if (profile.bio != null && profile.bio!.isNotEmpty)
+        if (!dense && profile.bio != null && profile.bio!.isNotEmpty)
           Padding(
             padding: EdgeInsets.only(
-              top: 14,
-              left: alignLeft ? 0 : 16,
-              right: alignLeft ? 0 : 16,
+              top: 10,
+              left: alignLeft ? 0 : 12,
+              right: alignLeft ? 0 : 12,
             ),
             child: Text(
               profile.bio!,
@@ -1211,9 +1542,9 @@ class _ProfileHeader extends StatelessWidget {
               maxLines: layoutStyle.compactCard ? 2 : 3,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.outfit(
-                color: Colors.white60,
-                fontSize: 14,
-                height: 1.4,
+                color: Colors.white.withValues(alpha: 0.72),
+                fontSize: 13.5,
+                height: 1.35,
               ),
             ),
           ),
@@ -1229,6 +1560,32 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
+class _MetaChip extends StatelessWidget {
+  final String label;
+  final Color accent;
+
+  const _MetaChip({required this.label, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: accent.withValues(alpha: 0.25)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.outfit(
+          color: Colors.white.withValues(alpha: 0.88),
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
 
 class _FeedImage extends StatelessWidget {
   final String url;
@@ -1238,18 +1595,35 @@ class _FeedImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CachedNetworkImage(
-      imageUrl: url,
-      fit: fit,
-      width: double.infinity,
-      height: double.infinity,
-      placeholder: (_, __) => Container(
-        color: Colors.black12,
+    if (url.isEmpty) {
+      return Container(
+        color: Colors.black26,
         child: const Center(
-          child: CircularProgressIndicator(strokeWidth: 2),
+          child: Icon(Icons.person_rounded, size: 48, color: Colors.white38),
+        ),
+      );
+    }
+    return WatermarkOverlay(
+      child: CachedNetworkImage(
+        imageUrl: url,
+        fit: fit,
+        width: double.infinity,
+        height: double.infinity,
+        placeholder: (_, __) => Container(
+          color: Colors.black26,
+          child: const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white54,
+            ),
+          ),
+        ),
+        errorWidget: (_, __, ___) => Container(
+          color: Colors.black26,
+          child: const Icon(Icons.broken_image_rounded,
+              size: 40, color: Colors.white38),
         ),
       ),
-      errorWidget: (_, __, ___) => const Icon(Icons.broken_image, size: 40),
     );
   }
 }
@@ -1257,8 +1631,13 @@ class _FeedImage extends StatelessWidget {
 class _DetailBlock extends StatelessWidget {
   final String label;
   final Widget child;
+  final Color accent;
 
-  const _DetailBlock({required this.label, required this.child});
+  const _DetailBlock({
+    required this.label,
+    required this.child,
+    required this.accent,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1267,14 +1646,27 @@ class _DetailBlock extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.outfit(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 3,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: GoogleFonts.outfit(
+                  color: Colors.white.withValues(alpha: 0.55),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.3,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           child,
@@ -1293,16 +1685,18 @@ class _Tag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.15),
+        color: theme.primaryColor.withValues(alpha: 0.28),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.accentColor.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: theme.accentColor.withValues(alpha: 0.55),
+        ),
       ),
       child: Text(
         label,
         style: GoogleFonts.outfit(
-          color: theme.textColor,
+          color: Colors.white,
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
@@ -1314,8 +1708,13 @@ class _Tag extends StatelessWidget {
 class _PageDots extends StatelessWidget {
   final int count;
   final int active;
+  final Color accent;
 
-  const _PageDots({required this.count, required this.active});
+  const _PageDots({
+    required this.count,
+    required this.active,
+    required this.accent,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1323,18 +1722,30 @@ class _PageDots extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(
         count,
-        (i) => AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: active == i ? 20 : 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: active == i
-                ? Colors.white
-                : Colors.white.withValues(alpha: 0.35),
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
+        (i) {
+          final isActive = active == i;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            width: isActive ? 22 : 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: isActive
+                  ? accent
+                  : Colors.white.withValues(alpha: 0.32),
+              borderRadius: BorderRadius.circular(4),
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.55),
+                        blurRadius: 8,
+                      ),
+                    ]
+                  : null,
+            ),
+          );
+        },
       ),
     );
   }
@@ -1343,23 +1754,32 @@ class _PageDots extends StatelessWidget {
 class _SwipeHint extends StatelessWidget {
   final String text;
   final Color color;
+  final bool alignLeft;
 
-  const _SwipeHint({required this.text, required this.color});
+  const _SwipeHint({
+    required this.text,
+    required this.color,
+    this.alignLeft = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment:
+          alignLeft ? MainAxisAlignment.start : MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.swipe_rounded, color: color.withValues(alpha: 0.4), size: 14),
+        Icon(Icons.swipe_rounded, color: color.withValues(alpha: 0.55), size: 13),
         const SizedBox(width: 4),
-        Text(
-          text,
-          style: GoogleFonts.outfit(
-            color: color.withValues(alpha: 0.45),
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.1,
+        Flexible(
+          child: Text(
+            text,
+            style: GoogleFonts.outfit(
+              color: color.withValues(alpha: 0.55),
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.0,
+            ),
           ),
         ),
       ],
@@ -1368,18 +1788,22 @@ class _SwipeHint extends StatelessWidget {
 }
 
 class _LikedBadge extends StatelessWidget {
+  const _LikedBadge();
+
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFFF3040).withValues(alpha: 0.92),
+        gradient: const LinearGradient(
+          colors: [_kLikedGreen, _kLikedGreenDeep],
+        ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: _kLikedGreen.withValues(alpha: 0.45),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -1387,8 +1811,8 @@ class _LikedBadge extends StatelessWidget {
         '♥ Liked',
         style: GoogleFonts.outfit(
           color: Colors.white,
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -1399,119 +1823,166 @@ class _LikeButton extends StatelessWidget {
   final bool liked;
   final bool loading;
   final VoidCallback onTap;
+  final bool compact;
 
   const _LikeButton({
     required this.liked,
     required this.loading,
     required this.onTap,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        GestureDetector(
-          onTap: loading || liked ? null : onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: liked
-                  ? const RadialGradient(
-                      colors: [Color(0xFF8BD969), Color(0xFF6AB04C)],
-                    )
-                  : null,
-              color: liked
-                  ? null
-                  : const Color(0xFF6AB04C).withValues(alpha: 0.45),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF8BD969)
-                      .withValues(alpha: liked ? 0.8 : 0.4),
-                  blurRadius: liked ? 24 : 16,
-                  spreadRadius: liked ? 2 : 0,
+    final size = compact ? 58.0 : 68.0;
+    final iconSize = compact ? 28.0 : 32.0;
+
+    return GestureDetector(
+      onTap: loading || liked ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutBack,
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: liked
+              ? const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [_kLikedGreen, _kLikedGreenDeep],
+                )
+              : const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [_kBrandPink, _kBrandPinkDeep],
                 ),
-              ],
-              border: Border.all(
-                color: Colors.white.withValues(alpha: liked ? 0.9 : 0.35),
-                width: 2,
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: (liked ? _kLikedGreen : _kBrandPink)
+                  .withValues(alpha: liked ? 0.65 : 0.55),
+              blurRadius: liked ? 22 : 18,
+              spreadRadius: liked ? 1 : 0,
+              offset: const Offset(0, 4),
             ),
-            child: loading
-                ? const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: Colors.white,
-                    ),
-                  )
-                : Icon(
-                    liked
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    color: Colors.white,
-                    size: 34,
-                  ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(
+            color: Colors.white.withValues(alpha: liked ? 0.95 : 0.55),
+            width: 2.2,
           ),
         ),
-        if (liked) ...[
-          const SizedBox(height: 6),
-          Text(
-            '♥ Already Liked',
-            style: GoogleFonts.outfit(
-              color: const Color(0xFF8BD969),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ],
+        child: loading
+            ? Padding(
+                padding: EdgeInsets.all(size * 0.28),
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : Icon(
+                liked ? Icons.favorite_rounded : Icons.favorite_rounded,
+                color: Colors.white,
+                size: iconSize,
+              ),
+      ),
     );
   }
 }
 
 class _DmButton extends StatelessWidget {
   final VoidCallback onTap;
+  final Color accent;
+  final Color primary;
 
-  const _DmButton({required this.onTap});
+  const _DmButton({
+    required this.onTap,
+    required this.accent,
+    required this.primary,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        height: 52,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          height: 56,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                primary.withValues(alpha: 0.95),
+                accent.withValues(alpha: 0.95),
+              ],
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.send_rounded, color: Color(0xFFFF2E74), size: 20),
-            const SizedBox(width: 10),
-            Text(
-              'Send a Message',
-              style: GoogleFonts.outfit(
-                color: const Color(0xFF1A1A1A),
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.28),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: accent.withValues(alpha: 0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 5),
               ),
-            ),
-          ],
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.28),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.chat_bubble_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Send a Message',
+                style: GoogleFonts.outfit(
+                  color: Colors.white,
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.white.withValues(alpha: 0.9),
+                size: 18,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+/// Pick black or white text for contrast on [bg].
+Color _readableOn(Color bg) {
+  final luminance = bg.computeLuminance();
+  return luminance > 0.55 ? const Color(0xFF1A1A1A) : Colors.white;
 }

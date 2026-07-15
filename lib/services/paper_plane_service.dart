@@ -96,8 +96,15 @@ class PaperPlaneService {
       final response = await _client.post(
         '${AppConstants.paperPlaneBase}$deliveryId/connect/',
       );
-      final data = response.data as Map;
-      return data['conversation_id']?.toString() ?? '';
+      final data = response.data;
+      if (data is Map) {
+        final id = data['conversation_id']?.toString() ?? '';
+        if (id.isEmpty || id == 'null') {
+          throw 'Server did not return a conversation id.';
+        }
+        return id;
+      }
+      throw 'Unexpected connect response from server.';
     } on DioException catch (e) {
       throw _parseError(e);
     }
@@ -147,10 +154,31 @@ class PaperPlaneService {
   String _parseError(DioException e) {
     final data = e.response?.data;
     if (data is Map) {
-      return data['detail']?.toString() ??
-          data['message']?.toString() ??
-          'Error';
+      final detail = data['detail'];
+      if (detail is String && detail.isNotEmpty) return detail;
+      if (detail is List && detail.isNotEmpty) {
+        return detail.map((e) => e.toString()).join(', ');
+      }
+      final message = data['message']?.toString();
+      if (message != null && message.isNotEmpty) return message;
+      // Field errors: { "field": ["msg"] }
+      for (final entry in data.entries) {
+        final v = entry.value;
+        if (v is List && v.isNotEmpty) return v.first.toString();
+        if (v is String && v.isNotEmpty) return v;
+      }
+      return 'Request failed (${e.response?.statusCode ?? '?'})';
     }
-    return 'Network error.';
+    if (data is String && data.isNotEmpty) {
+      return data.length > 160 ? '${data.substring(0, 160)}…' : data;
+    }
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout) {
+      return 'Connection timed out. Try again.';
+    }
+    if (e.type == DioExceptionType.connectionError) {
+      return 'Network error. Check your connection.';
+    }
+    return e.message?.isNotEmpty == true ? e.message! : 'Network error.';
   }
 }
