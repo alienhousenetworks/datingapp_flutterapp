@@ -15,13 +15,14 @@ class FeedItem {
   });
 
   factory FeedItem.fromJson(Map<String, dynamic> json) {
-    final profileData = json['profile'] as Map<String, dynamic>?;
+    final profileData = (json['profile_card'] ?? json['profile']) as Map<String, dynamic>?;
     final userId = json['id']?.toString() ?? profileData?['id']?.toString() ?? '';
 
     return FeedItem(
       profile: profileData != null
           ? UserProfile.fromJson({...profileData, 'id': userId})
           : UserProfile.fromJson(json),
+
       canDirectMessage: json['can_direct_message'] ?? false,
       score: json['score'] == null
           ? null

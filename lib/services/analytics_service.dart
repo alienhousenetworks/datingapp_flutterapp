@@ -3,10 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
-import '../core/constants.dart';
-import 'api_client.dart';
 import 'device_context_service.dart';
 import 'location_context.dart';
+import 'event_batcher_service.dart';
+
+
 
 /// Product analytics — batches events to POST /api/v1/analytics/events/
 class AnalyticsService {
@@ -83,10 +84,9 @@ class AnalyticsService {
         };
       }).toList();
 
-      await ApiClient.instance.post(
-        AppConstants.analyticsEvents,
-        data: {'events': enriched},
-      );
+      for (final event in enriched) {
+        EventBatcherService.instance.enqueue(type: 'analytics', data: event);
+      }
     } catch (e) {
       if (kDebugMode) debugPrint('[Analytics] flush failed: $e');
       _queue.insertAll(0, batch.take(50));
@@ -94,6 +94,7 @@ class AnalyticsService {
       _flushing = false;
     }
   }
+
 
   // ─── Convenience wrappers ─────────────────────────────────
 
@@ -109,7 +110,14 @@ class AnalyticsService {
       if (score != null) 'score': score,
       if (index != null) 'index': index,
     });
+    EventBatcherService.instance.enqueue(
+      type: 'seen',
+      data: {
+        'profile_ids': [profileId]
+      },
+    );
   }
+
 
   void trackFeedLike(String profileId, {bool matched = false}) {
     track('profile_liked', properties: {

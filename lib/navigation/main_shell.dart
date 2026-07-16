@@ -17,7 +17,9 @@ import '../providers/paper_plane_provider.dart';
 import '../services/heartbeat_service.dart';
 import '../services/notification_websocket.dart';
 import '../services/device_context_service.dart';
+import '../services/event_batcher_service.dart';
 import '../widgets/call/incoming_call_overlay.dart';
+
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
@@ -40,12 +42,15 @@ class _MainShellState extends ConsumerState<MainShell> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await DeviceContextService.instance.getContext(refreshNetwork: true);
+      EventBatcherService.instance.start();
       await HeartbeatService.instance.start();
       await ref.read(locationSyncProvider.notifier).syncToProfile();
       ref.read(callManagerProvider.notifier).ensureConnected();
       _connectNotifications();
     });
   }
+
+
 
   Future<void> _connectNotifications() async {
     final chatService = ref.read(chatServiceProvider);
@@ -118,10 +123,12 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   void dispose() {
+    EventBatcherService.instance.stop();
     HeartbeatService.instance.stop();
     _notificationWs.disconnect();
     super.dispose();
   }
+
 
   void _refreshTabData(int index) {
     if (index == 0) {

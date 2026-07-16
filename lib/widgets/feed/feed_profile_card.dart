@@ -428,480 +428,594 @@ class _HeroPageState extends State<_HeroPage> {
         final maxH = constraints.maxHeight;
         final maxW = constraints.maxWidth;
 
-        // L01: Classic glass card
-        if (style.useGlassmorphism) {
-          final cardH = (maxH * style.photoHeightFactor).clamp(280.0, maxH - 8);
-          final cardW = (maxW * style.photoWidthFactor).clamp(240.0, maxW - 32);
-          return Center(
+        switch (style.kind) {
+          case FeedLayoutKind.velvetGlass:
+            return _buildVelvetGlass(maxH, maxW, style);
+          case FeedLayoutKind.maison:
+            return _buildMaison(maxH, maxW, style);
+          case FeedLayoutKind.noir:
+            return _buildNoir(maxH, maxW, style);
+          case FeedLayoutKind.atelier:
+            return _buildAtelier(maxH, maxW, style);
+          case FeedLayoutKind.runway:
+            return _buildRunway(maxH, maxW, style);
+        }
+      },
+    );
+  }
+
+  // ── L01 Velvet Glass ──────────────────────────────────────
+  Widget _buildVelvetGlass(double maxH, double maxW, FeedLayoutStyle style) {
+    final cardH = (maxH * style.photoHeightFactor).clamp(300.0, maxH - 4);
+    final cardW = (maxW * style.photoWidthFactor).clamp(260.0, maxW - 24);
+    final accent = widget.theme.accentColor;
+    final primary = widget.theme.primaryColor;
+
+    return Center(
+      child: Container(
+        height: cardH,
+        width: cardW,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(style.borderRadius),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.22),
+            width: 1.2,
+          ),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withValues(alpha: 0.16),
+              Colors.white.withValues(alpha: 0.05),
+              primary.withValues(alpha: 0.08),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.32),
+              blurRadius: 36,
+              spreadRadius: -2,
+              offset: const Offset(0, 16),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(style.borderRadius - 1),
+          child: Column(
+            children: [
+              Expanded(
+                flex: 62,
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                  decoration: BoxDecoration(
+                    borderRadius:
+                        BorderRadius.circular(style.borderRadius - 10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.28),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius:
+                        BorderRadius.circular(style.borderRadius - 10),
+                    child: _photoPager(),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 38,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: _ProfileHeader(
+                          profile: widget.profile,
+                          theme: widget.theme,
+                          layoutStyle: style,
+                          dense: true,
+                          showBio: true,
+                          bioMaxLines: 3,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _SwipeHint(
+                        text: 'SWIPE PHOTOS →',
+                        color: Colors.white.withValues(alpha: 0.65),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── L02 Maison (editorial split) ──────────────────────────
+  Widget _buildMaison(double maxH, double maxW, FeedLayoutStyle style) {
+    final cardH = (maxH * style.photoHeightFactor).clamp(280.0, maxH - 4);
+    final accent = widget.theme.accentColor;
+    final primary = widget.theme.primaryColor;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      child: Center(
+        child: Container(
+          height: cardH,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(style.borderRadius),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            color: const Color(0xFF0A0A0A).withValues(alpha: 0.55),
+            boxShadow: [
+              BoxShadow(
+                color: accent.withValues(alpha: 0.20),
+                blurRadius: 30,
+                offset: const Offset(0, 12),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.40),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(style.borderRadius - 1),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 11,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _photoPager(),
+                      Positioned(
+                        left: 10,
+                        top: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Text(
+                            'MAISON',
+                            style: GoogleFonts.outfit(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.6,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 2.5,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        accent.withValues(alpha: 0.15),
+                        accent,
+                        primary,
+                        accent.withValues(alpha: 0.15),
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 10,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.25),
+                          Colors.black.withValues(alpha: 0.55),
+                        ],
+                      ),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(14, 18, 12, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _ProfileHeader(
+                            profile: widget.profile,
+                            theme: widget.theme,
+                            layoutStyle: style,
+                            alignLeft: true,
+                            dense: true,
+                            showBio: true,
+                            bioMaxLines: 5,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        _SwipeHint(
+                          text: 'SWIPE PHOTOS →',
+                          color: Colors.white.withValues(alpha: 0.5),
+                          alignLeft: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── L03 Noir (cinematic full-bleed) ───────────────────────
+  Widget _buildNoir(double maxH, double maxW, FeedLayoutStyle style) {
+    final accent = widget.theme.accentColor;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(child: _photoPager()),
+        // Film-grain style vignette
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.black.withValues(alpha: 0.35),
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.25),
+                  Colors.black.withValues(alpha: 0.92),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: const [0.0, 0.28, 0.48, 1.0],
+              ),
+            ),
+          ),
+        ),
+        // Gold accent line
+        Positioned(
+          left: 20,
+          right: 20,
+          bottom: 0,
+          height: 2,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  accent.withValues(alpha: 0.85),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 16,
+          right: 16,
+          bottom: 14,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.black.withValues(alpha: 0.55),
+                  Colors.black.withValues(alpha: 0.72),
+                ],
+              ),
+              border: Border.all(
+                color: accent.withValues(alpha: 0.35),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.22),
+                  blurRadius: 24,
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 18,
+                      height: 1,
+                      color: accent.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'NOIR',
+                      style: GoogleFonts.outfit(
+                        color: accent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 3.2,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 18,
+                      height: 1,
+                      color: accent.withValues(alpha: 0.7),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _ProfileHeader(
+                  profile: widget.profile,
+                  theme: widget.theme,
+                  layoutStyle: style,
+                  dense: true,
+                  showBio: true,
+                  bioMaxLines: 3,
+                  forceLightText: true,
+                ),
+                const SizedBox(height: 8),
+                _SwipeHint(
+                  text: 'SWIPE FOR PHOTOS →',
+                  color: Colors.white.withValues(alpha: 0.75),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── L04 Atelier (museum gallery frame) ────────────────────
+  Widget _buildAtelier(double maxH, double maxW, FeedLayoutStyle style) {
+    final cardH = (maxH * style.photoHeightFactor).clamp(220.0, maxH * 0.68);
+    final cardW = (maxW * style.photoWidthFactor).clamp(210.0, maxW - 48);
+    final accent = widget.theme.accentColor;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Outer museum mat + frame
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1A1A).withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(style.borderRadius + 6),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.18),
+                width: style.borderWidth,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 28,
+                  offset: const Offset(0, 14),
+                ),
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.12),
+                  blurRadius: 40,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
             child: Container(
               height: cardH,
               width: cardW,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(style.borderRadius),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  width: 1.5,
+                  color: accent.withValues(alpha: 0.55),
+                  width: 1.2,
                 ),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white.withValues(alpha: 0.14),
-                    Colors.white.withValues(alpha: 0.04),
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.theme.primaryColor.withValues(alpha: 0.28),
-                    blurRadius: 28,
-                    offset: const Offset(0, 14),
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(style.borderRadius - 1),
-                child: Column(
-                  children: [
-                    Expanded(
-                      flex: 72,
-                      child: Container(
-                        margin: const EdgeInsets.fromLTRB(10, 10, 10, 6),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(
-                            style.borderRadius - 8,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 10,
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(
-                            style.borderRadius - 8,
-                          ),
-                          child: _photoPager(),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 28,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Flexible(
-                              child: _ProfileHeader(
-                                profile: widget.profile,
-                                theme: widget.theme,
-                                layoutStyle: style,
-                                dense: true,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            _SwipeHint(
-                              text: 'SWIPE PHOTOS →',
-                              color: Colors.white.withValues(alpha: 0.7),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                borderRadius: BorderRadius.circular(style.borderRadius - 0.5),
+                child: _photoPager(),
               ),
             ),
-          );
-        }
-
-        // L02: Editorial split
-        if (style.useEditorialSplit) {
-          final cardH = (maxH * style.photoHeightFactor).clamp(260.0, maxH - 8);
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Center(
-              child: Container(
-                height: cardH,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(style.borderRadius),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.14),
-                  ),
-                  color: Colors.black.withValues(alpha: 0.22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: widget.theme.accentColor.withValues(alpha: 0.22),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(style.borderRadius - 1),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 12,
-                        child: _photoPager(),
-                      ),
-                      Container(
-                        width: 3,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              widget.theme.accentColor.withValues(alpha: 0.2),
-                              widget.theme.accentColor,
-                              widget.theme.primaryColor,
-                              widget.theme.accentColor.withValues(alpha: 0.2),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 9,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.15),
-                                Colors.black.withValues(alpha: 0.45),
-                              ],
-                            ),
-                          ),
-                          padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: _ProfileHeader(
-                                  profile: widget.profile,
-                                  theme: widget.theme,
-                                  layoutStyle: style,
-                                  alignLeft: true,
-                                  dense: true,
-                                ),
-                              ),
-                              _SwipeHint(
-                                text: 'SWIPE PHOTOS →',
-                                color: Colors.white.withValues(alpha: 0.55),
-                                alignLeft: true,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
-
-        // L03: Full-bleed cinematic
-        if (style.fullBleedPhoto) {
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              Positioned.fill(child: _photoPager()),
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.black.withValues(alpha: 0.05),
-                        Colors.black.withValues(alpha: 0.25),
-                        Colors.black.withValues(alpha: 0.88),
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: const [0.0, 0.4, 1.0],
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: 12,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    color: Colors.black.withValues(alpha: 0.42),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.16),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: widget.theme.primaryColor.withValues(alpha: 0.25),
-                        blurRadius: 18,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _ProfileHeader(
-                        profile: widget.profile,
-                        theme: widget.theme,
-                        layoutStyle: style,
-                        dense: true,
-                      ),
-                      const SizedBox(height: 8),
-                      _SwipeHint(
-                        text: 'SWIPE FOR PHOTOS →',
-                        color: Colors.white.withValues(alpha: 0.8),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          );
-        }
-
-        // L04: Minimal gallery
-        if (style.compactCard) {
-          final cardH = (maxH * style.photoHeightFactor).clamp(240.0, maxH * 0.82);
-          final cardW = (maxW * style.photoWidthFactor).clamp(220.0, maxW - 40);
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  height: cardH,
-                  width: cardW,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(style.borderRadius),
-                    border: Border.all(
-                      color: widget.theme.accentColor,
-                      width: style.borderWidth,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: widget.theme.accentColor.withValues(alpha: 0.35),
-                        blurRadius: 22,
-                        offset: const Offset(0, 8),
-                      ),
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(style.borderRadius - 2),
-                    child: _photoPager(),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _ProfileHeader(
-                  profile: widget.profile,
-                  theme: widget.theme,
-                  layoutStyle: style,
-                  dense: true,
-                ),
-                const SizedBox(height: 6),
-                _SwipeHint(
-                  text: 'SWIPE PHOTOS →',
-                  color: Colors.white.withValues(alpha: 0.65),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // L05: Bold streetwear poster (photo + overlay typography)
-        if (style.usePosterBold) {
-          final cardH = (maxH * style.photoHeightFactor).clamp(280.0, maxH - 4);
-          final cardW = (maxW * style.photoWidthFactor).clamp(260.0, maxW - 28);
-
-          Widget poster = Container(
-            height: cardH,
-            width: cardW,
+          ),
+          const SizedBox(height: 16),
+          // Plaque-style name plate
+          Container(
+            width: cardW + 20,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(style.borderRadius),
+              color: Colors.black.withValues(alpha: 0.42),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: widget.theme.accentColor.withValues(alpha: 0.85),
-                width: style.borderWidth,
+                color: Colors.white.withValues(alpha: 0.12),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: widget.theme.accentColor.withValues(alpha: 0.4),
-                  blurRadius: 28,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 10),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.45),
-                  blurRadius: 18,
-                  offset: const Offset(4, 12),
-                ),
-              ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(style.borderRadius - 1),
-              child: Stack(
-                fit: StackFit.expand,
+            child: _ProfileHeader(
+              profile: widget.profile,
+              theme: widget.theme,
+              layoutStyle: style,
+              dense: true,
+              showBio: true,
+              bioMaxLines: 3,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _SwipeHint(
+            text: 'SWIPE PHOTOS →',
+            color: Colors.white.withValues(alpha: 0.6),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── L05 Runway (fashion poster) ───────────────────────────
+  Widget _buildRunway(double maxH, double maxW, FeedLayoutStyle style) {
+    final cardH = (maxH * style.photoHeightFactor).clamp(300.0, maxH - 4);
+    final cardW = (maxW * style.photoWidthFactor).clamp(270.0, maxW - 20);
+    final accent = widget.theme.accentColor;
+    final primary = widget.theme.primaryColor;
+
+    Widget poster = Container(
+      height: cardH,
+      width: cardW,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(style.borderRadius),
+        border: Border.all(
+          color: accent.withValues(alpha: 0.9),
+          width: style.borderWidth,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.38),
+            blurRadius: 32,
+            spreadRadius: 0,
+            offset: const Offset(0, 12),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 20,
+            offset: const Offset(6, 14),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(style.borderRadius - 1),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _photoPager(),
+            // Vertical brand stripe
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 7,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [accent, primary, accent],
+                  ),
+                ),
+              ),
+            ),
+            // Top label
+            Positioned(
+              top: 14,
+              right: 14,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'RUNWAY',
+                  style: GoogleFonts.outfit(
+                    color: _readableOn(accent),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.8,
+                  ),
+                ),
+              ),
+            ),
+            // Bottom type block
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: cardH * 0.52,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.55),
+                      Colors.black.withValues(alpha: 0.94),
+                    ],
+                    stops: const [0.0, 0.4, 1.0],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 18,
+              right: 16,
+              bottom: 14,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _photoPager(),
-                  // Diagonal accent stripe (streetwear feel)
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 6,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            widget.theme.accentColor,
-                            widget.theme.primaryColor,
-                            widget.theme.accentColor,
-                          ],
-                        ),
-                      ),
-                    ),
+                  _ProfileHeader(
+                    profile: widget.profile,
+                    theme: widget.theme,
+                    layoutStyle: style,
+                    alignLeft: true,
+                    dense: true,
+                    showBio: true,
+                    bioMaxLines: 3,
+                    forceLightText: true,
                   ),
-                  // Bottom gradient for type
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    height: cardH * 0.48,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.55),
-                            Colors.black.withValues(alpha: 0.92),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Bold typography block
-                  Positioned(
-                    left: 16,
-                    right: 16,
-                    bottom: 14,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: widget.theme.accentColor,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'NOW LIVE',
-                            style: GoogleFonts.outfit(
-                              color: _readableOn(widget.theme.accentColor),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.4,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _ProfileHeader(
-                          profile: widget.profile,
-                          theme: widget.theme,
-                          layoutStyle: style,
-                          alignLeft: true,
-                          dense: true,
-                          forceLightText: true,
-                        ),
-                        const SizedBox(height: 8),
-                        _SwipeHint(
-                          text: 'SWIPE PHOTOS →',
-                          color: Colors.white.withValues(alpha: 0.75),
-                          alignLeft: true,
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 8),
+                  _SwipeHint(
+                    text: 'SWIPE PHOTOS →',
+                    color: Colors.white.withValues(alpha: 0.7),
+                    alignLeft: true,
                   ),
                 ],
               ),
             ),
-          );
+          ],
+        ),
+      ),
+    );
 
-          if (style.photoRotation != 0) {
-            poster = Transform.rotate(
-              angle: style.photoRotation,
-              child: poster,
-            );
-          }
+    if (style.photoRotation != 0) {
+      poster = Transform.rotate(angle: style.photoRotation, child: poster);
+    }
 
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: poster,
-            ),
-          );
-        }
-
-        // Fallback
-        final cardH = (maxH * 0.72).clamp(260.0, maxH - 8);
-        final cardW = (maxW * 0.88).clamp(240.0, maxW - 32);
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                height: cardH,
-                width: cardW,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(style.borderRadius),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(style.borderRadius),
-                  child: _photoPager(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _ProfileHeader(
-                profile: widget.profile,
-                theme: widget.theme,
-                layoutStyle: style,
-                dense: true,
-              ),
-            ],
-          ),
-        );
-      },
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: poster,
+      ),
     );
   }
 }
@@ -1153,6 +1267,8 @@ class _CharacterHeroPage extends StatelessWidget {
               profile: profile,
               theme: theme,
               layoutStyle: layoutStyle,
+              showBio: true,
+              bioMaxLines: 4,
             ),
             const SizedBox(height: 8),
             _SwipeHint(
@@ -1430,6 +1546,9 @@ class _ProfileHeader extends StatelessWidget {
   final bool alignLeft;
   final bool dense;
   final bool forceLightText;
+  /// When true, bio is shown even on dense hero cards (first page).
+  final bool showBio;
+  final int bioMaxLines;
 
   const _ProfileHeader({
     required this.profile,
@@ -1438,6 +1557,8 @@ class _ProfileHeader extends StatelessWidget {
     this.alignLeft = false,
     this.dense = false,
     this.forceLightText = false,
+    this.showBio = false,
+    this.bioMaxLines = 3,
   });
 
   @override
@@ -1449,6 +1570,8 @@ class _ProfileHeader extends StatelessWidget {
     final nameSize = dense
         ? (isBold ? 24.0 : 20.0)
         : (isBold ? 28.0 : 24.0);
+    final hasBio = profile.bio != null && profile.bio!.trim().isNotEmpty;
+    final shouldShowBio = showBio || !dense;
 
     return Column(
       crossAxisAlignment:
@@ -1529,22 +1652,23 @@ class _ProfileHeader extends StatelessWidget {
               ),
           ],
         ),
-        if (!dense && profile.bio != null && profile.bio!.isNotEmpty)
+        if (shouldShowBio)
           Padding(
             padding: EdgeInsets.only(
-              top: 10,
-              left: alignLeft ? 0 : 12,
-              right: alignLeft ? 0 : 12,
+              top: dense ? 8 : 10,
+              left: alignLeft ? 0 : 8,
+              right: alignLeft ? 0 : 8,
             ),
             child: Text(
-              profile.bio!,
+              hasBio ? profile.bio! : 'No bio yet.',
               textAlign: alignLeft ? TextAlign.left : TextAlign.center,
-              maxLines: layoutStyle.compactCard ? 2 : 3,
+              maxLines: bioMaxLines,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.outfit(
-                color: Colors.white.withValues(alpha: 0.72),
-                fontSize: 13.5,
-                height: 1.35,
+                color: Colors.white.withValues(alpha: hasBio ? 0.82 : 0.45),
+                fontSize: dense ? 12.5 : 13.5,
+                height: 1.4,
+                fontStyle: hasBio ? FontStyle.normal : FontStyle.italic,
               ),
             ),
           ),

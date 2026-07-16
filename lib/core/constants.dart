@@ -118,11 +118,11 @@ class AppConstants {
   // ─── Theme ID Registry ──────────────────────────────────
   // Layouts: stable IDs the backend assigns. Flutter owns visuals.
   static const Map<String, String> layoutNames = {
-    'L01': 'Classic',
-    'L02': 'Split',
-    'L03': 'Immersive',
-    'L04': 'Minimal',
-    'L05': 'Bold',
+    'L01': 'Velvet Glass',
+    'L02': 'Maison',
+    'L03': 'Noir',
+    'L04': 'Atelier',
+    'L05': 'Runway',
   };
 
   static const List<String> layoutIds = [

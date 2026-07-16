@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -847,29 +848,30 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
                           child: GestureDetector(
                             onPanUpdate: _onPanUpdate,
                             child: SizedBox(
-                              width: 320,
-                              height: 340,
+                              // Larger canvas so the paper is always big
+                              width: 340,
+                              height: 380,
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
                                   // Soft ambient glow under paper
                                   Container(
-                                    width: 180,
-                                    height: 200,
+                                    width: 200,
+                                    height: 230,
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(24),
                                       boxShadow: [
                                         BoxShadow(
                                           color: const Color(0xFFFF2E74)
                                               .withValues(alpha: 0.12 + _dragProgress * 0.08),
-                                          blurRadius: 48,
-                                          spreadRadius: 4,
+                                          blurRadius: 60,
+                                          spreadRadius: 8,
                                         ),
                                       ],
                                     ),
                                   ),
                                   CustomPaint(
-                                    size: const Size(320, 340),
+                                    size: const Size(340, 380),
                                     painter: _FoldablePaperPainter(
                                       stage: _stage,
                                       stageProgress: _dragProgress,
@@ -990,6 +992,11 @@ class _PulseIndicatorState extends State<_PulseIndicator>
 }
 
 // ─── Realistic origami paper plane painter ───────────────────────────────
+//
+// Paper dimensions are deliberately large (w=190, h=240) so the sheet fills
+// the canvas well at every stage.  Each stage operates on a consistent set of
+// anchor points so stage transitions look seamless.
+//
 class _FoldablePaperPainter extends CustomPainter {
   final int stage;
   final double stageProgress;
@@ -1023,7 +1030,6 @@ class _FoldablePaperPainter extends CustomPainter {
   // Returns (scale along fold axis, shade 0–1)
   (double scale, double shade) _foldPerspective(double t) {
     final p = _s(t);
-    // scale goes 1 → ~0.04 at midpoint → 1 on the other side
     if (p < 0.5) {
       final u = p * 2;
       return (1.0 - u * 0.96, 0.15 + u * 0.55);
@@ -1065,20 +1071,19 @@ class _FoldablePaperPainter extends CustomPainter {
     );
   }
 
-  void _drawPaperBody(Canvas canvas, Path path, {double shade = 0}) {
+  void _drawPaperBody(Canvas canvas, Path path, {double shade = 0, bool showLines = true}) {
     _drawSoftShadow(canvas, path);
-    // Base fill
     canvas.drawPath(path, _paperFill(shade: shade));
-    // Subtle top-left highlight gradient via layered translucent path
+
     final bounds = path.getBounds();
     final highlight = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Colors.white.withValues(alpha: 0.35),
+          Colors.white.withValues(alpha: 0.38),
           Colors.transparent,
-          _paperWarm.withValues(alpha: 0.35),
+          _paperWarm.withValues(alpha: 0.32),
         ],
         stops: const [0.0, 0.45, 1.0],
       ).createShader(bounds)
@@ -1086,8 +1091,8 @@ class _FoldablePaperPainter extends CustomPainter {
     canvas.save();
     canvas.clipPath(path);
     canvas.drawRect(bounds, highlight);
-    // Faint ruled lines for “letter paper” feel early on
-    if (stage <= 2) {
+    // Faint ruled lines for "letter paper" feel early on
+    if (showLines && stage <= 2) {
       final line = Paint()
         ..color = const Color(0xFFB8D4E8).withValues(alpha: 0.22)
         ..strokeWidth = 0.8;
@@ -1104,8 +1109,6 @@ class _FoldablePaperPainter extends CustomPainter {
   }
 
   /// Fold a triangle flap over a crease using perspective scale.
-  /// [creaseA]/[creaseB] is the hinge. [tip] is the free corner.
-  /// [targetTip] is where the tip lands when fully folded.
   void _drawFoldingFlap({
     required Canvas canvas,
     required Offset creaseA,
@@ -1118,7 +1121,6 @@ class _FoldablePaperPainter extends CustomPainter {
     final p = _s(t);
     final (scale, shade) = _foldPerspective(p);
 
-    // Midpoint of crease for local transform
     final mid = Offset(
       (creaseA.dx + creaseB.dx) / 2,
       (creaseA.dy + creaseB.dy) / 2,
@@ -1127,23 +1129,17 @@ class _FoldablePaperPainter extends CustomPainter {
     final axisLen = axis.distance;
     if (axisLen < 0.001) return;
     final axisDir = axis / axisLen;
-    // Perpendicular in plane
     final perp = Offset(-axisDir.dy, axisDir.dx);
 
-    // Decide which side tip currently sits
     final tipRel = tip - mid;
     final tipSide = tipRel.dx * perp.dx + tipRel.dy * perp.dy;
     final targetRel = targetTip - mid;
     final targetSide = targetRel.dx * perp.dx + targetRel.dy * perp.dy;
 
-    // Animated tip position: from tip → crease mid → target
     late Offset animatedTip;
     if (p < 0.5) {
       final u = p * 2;
-      // Collapse tip toward crease (edge-on)
       final tipOnCrease = mid + axisDir * (tipRel.dx * axisDir.dx + tipRel.dy * axisDir.dy);
-      animatedTip = Offset.lerp(tip, tipOnCrease, u)!;
-      // Scale thickness via offset along perp
       final thickness = (tipSide.abs()) * (1 - u) * scale.clamp(0.04, 1.0);
       final sign = tipSide >= 0 ? 1.0 : -1.0;
       animatedTip = tipOnCrease + perp * sign * thickness;
@@ -1161,7 +1157,6 @@ class _FoldablePaperPainter extends CustomPainter {
       ..lineTo(creaseB.dx, creaseB.dy)
       ..close();
 
-    // Drop shadow of moving flap
     if (p > 0.02 && p < 0.98) {
       canvas.drawPath(
         flap.shift(Offset(perp.dx * 3, perp.dy * 3 + 2)),
@@ -1172,7 +1167,6 @@ class _FoldablePaperPainter extends CustomPainter {
     }
 
     canvas.drawPath(flap, _paperFill(shade: shade * 0.55));
-    // Inner fold gradient
     final fb = flap.getBounds();
     canvas.save();
     canvas.clipPath(flap);
@@ -1211,7 +1205,7 @@ class _FoldablePaperPainter extends CustomPainter {
       canvas.drawPath(
         ghost,
         Paint()
-          ..color = const Color(0xFFFF2E74).withValues(alpha: 0.25 * (1 - p))
+          ..color = const Color(0xFFFF2E74).withValues(alpha: 0.28 * (1 - p))
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1
           ..strokeJoin = StrokeJoin.round,
@@ -1228,22 +1222,22 @@ class _FoldablePaperPainter extends CustomPainter {
     if (opacity <= 0.05) return;
     final textToShow = msg.trim().isEmpty ? 'Your message…' : msg;
     final truncated =
-        textToShow.length > 48 ? '${textToShow.substring(0, 46)}…' : textToShow;
+        textToShow.length > 56 ? '${textToShow.substring(0, 54)}…' : textToShow;
 
     final tp = TextPainter(
       text: TextSpan(
         text: truncated,
         style: TextStyle(
           color: _ink.withValues(alpha: opacity),
-          fontSize: 11,
-          height: 1.35,
+          fontSize: 11.5,
+          height: 1.45,
           fontWeight: FontWeight.w500,
           fontFamily: 'serif',
         ),
       ),
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.center,
-      maxLines: 4,
+      maxLines: 5,
       ellipsis: '…',
     );
     tp.layout(maxWidth: area.width - 20);
@@ -1256,61 +1250,117 @@ class _FoldablePaperPainter extends CustomPainter {
     );
   }
 
+  // Classic dart silhouette – wider, more realistic
   Path _planeSilhouette(double cx, double cy, double scale) {
     return Path()
-      ..moveTo(cx + 52 * scale, cy)
-      ..lineTo(cx - 48 * scale, cy - 28 * scale)
-      ..lineTo(cx - 18 * scale, cy - 4 * scale)
-      ..lineTo(cx - 48 * scale, cy + 28 * scale)
-      ..lineTo(cx - 22 * scale, cy + 6 * scale)
+      // Nose tip (right)
+      ..moveTo(cx + 68 * scale, cy)
+      // Upper wing trailing edge
+      ..lineTo(cx - 58 * scale, cy - 36 * scale)
+      // Inner upper wing fold line
+      ..lineTo(cx - 22 * scale, cy - 5 * scale)
+      // Lower wing inner
+      ..lineTo(cx - 58 * scale, cy + 36 * scale)
+      // Lower wing trailing edge back to body
+      ..lineTo(cx - 26 * scale, cy + 7 * scale)
       ..close();
   }
 
   void _drawFinishedPlane(Canvas canvas, double cx, double cy, double t) {
-    final scale = 1.0 + t * 0.15;
+    final scale = 1.0 + t * 0.12;
     final path = _planeSilhouette(cx, cy, scale);
 
-    // Glow
+    // Outer glow
     canvas.drawPath(
       path,
       Paint()
-        ..color = const Color(0xFFFF2E74).withValues(alpha: 0.2 + t * 0.25)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16),
+        ..color = const Color(0xFFFF2E74).withValues(alpha: 0.18 + t * 0.28)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20),
     );
-    _drawSoftShadow(canvas, path, blur: 18, dy: 8);
+    _drawSoftShadow(canvas, path, blur: 20, dy: 10);
 
-    // Body with slight 3D: upper wing lighter, lower darker
+    // Main body fill
     canvas.drawPath(path, _paperFill(shade: 0.05));
 
-    // Center body spine
-    final spine = Path()
-      ..moveTo(cx + 48 * scale, cy)
-      ..lineTo(cx - 20 * scale, cy - 3 * scale)
-      ..lineTo(cx - 20 * scale, cy + 3 * scale)
+    // Upper wing – slightly lighter
+    final upperWing = Path()
+      ..moveTo(cx + 68 * scale, cy)
+      ..lineTo(cx - 58 * scale, cy - 36 * scale)
+      ..lineTo(cx - 22 * scale, cy - 5 * scale)
       ..close();
-    canvas.drawPath(spine, _paperFill(shade: 0.18));
+    canvas.save();
+    canvas.clipPath(upperWing);
+    canvas.drawRect(
+      upperWing.getBounds(),
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white.withValues(alpha: 0.22),
+            Colors.transparent,
+          ],
+        ).createShader(upperWing.getBounds()),
+    );
+    canvas.restore();
+
+    // Lower wing – slightly darker
+    final lowerWing = Path()
+      ..moveTo(cx + 68 * scale, cy)
+      ..lineTo(cx - 26 * scale, cy + 7 * scale)
+      ..lineTo(cx - 58 * scale, cy + 36 * scale)
+      ..close();
+    canvas.save();
+    canvas.clipPath(lowerWing);
+    canvas.drawRect(
+      lowerWing.getBounds(),
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.transparent,
+            _foldShadow.withValues(alpha: 0.18),
+          ],
+        ).createShader(lowerWing.getBounds()),
+    );
+    canvas.restore();
+
+    // Center body spine (thick triangle)
+    final spine = Path()
+      ..moveTo(cx + 64 * scale, cy)
+      ..lineTo(cx - 24 * scale, cy - 6 * scale)
+      ..lineTo(cx - 24 * scale, cy + 6 * scale)
+      ..close();
+    canvas.drawPath(spine, _paperFill(shade: 0.20));
 
     // Wing crease lines
     canvas.drawLine(
-      Offset(cx + 40 * scale, cy),
-      Offset(cx - 40 * scale, cy - 18 * scale),
-      _creasePaint(alpha: 0.7, width: 1.3),
+      Offset(cx + 56 * scale, cy),
+      Offset(cx - 50 * scale, cy - 24 * scale),
+      _creasePaint(alpha: 0.72, width: 1.4),
     );
     canvas.drawLine(
-      Offset(cx + 40 * scale, cy),
-      Offset(cx - 40 * scale, cy + 18 * scale),
-      _creasePaint(alpha: 0.7, width: 1.3),
+      Offset(cx + 56 * scale, cy),
+      Offset(cx - 50 * scale, cy + 24 * scale),
+      _creasePaint(alpha: 0.72, width: 1.4),
+    );
+    // Center spine crease
+    canvas.drawLine(
+      Offset(cx + 64 * scale, cy),
+      Offset(cx - 26 * scale, cy),
+      _creasePaint(alpha: 0.55, width: 1.0),
     );
 
-    canvas.drawPath(path, _edgePaint(width: 1.3));
+    canvas.drawPath(path, _edgePaint(width: 1.4));
 
     // Specular highlight streak
     canvas.drawLine(
-      Offset(cx + 30 * scale, cy - 4),
-      Offset(cx - 10 * scale, cy - 10 * scale),
+      Offset(cx + 42 * scale, cy - 5),
+      Offset(cx - 14 * scale, cy - 14 * scale),
       Paint()
-        ..color = Colors.white.withValues(alpha: 0.55)
-        ..strokeWidth = 2
+        ..color = Colors.white.withValues(alpha: 0.60)
+        ..strokeWidth = 2.2
         ..strokeCap = StrokeCap.round
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
     );
@@ -1321,16 +1371,17 @@ class _FoldablePaperPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height / 2 + 8;
 
-    // Paper dimensions (letter-ish ratio)
-    const w = 148.0;
-    const h = 196.0;
+    // ── Paper anchor points (letter-ish ratio, larger than before) ──
+    // Increased from w=148 to w=190, h from 196 to 242
+    const w = 190.0;
+    const h = 242.0;
     final left = cx - w / 2;
     final right = cx + w / 2;
     final top = cy - h / 2;
     final bottom = cy + h / 2;
     final midX = cx;
-    // Diagonal fold reaches this Y on the sides (classic corner-to-center)
-    final foldY = top + w / 2; // square corner fold depth
+    // Classic corner-to-center fold depth (45° from corner)
+    final foldY = top + w / 2; // = top + 95
 
     final t = stageProgress.clamp(0.0, 1.0);
 
@@ -1342,8 +1393,9 @@ class _FoldablePaperPainter extends CustomPainter {
 
     // ── STAGE 1: fold top-left corner to center ──
     if (stage == 1) {
-      // Sheet: full before edge-on, corner cut after the flap passes the crease
-      final Path sheet = t < 0.5
+      final p = _s(t);
+      // Sheet base: full rectangle before fold reaches midpoint, then notched
+      final Path sheet = p < 0.5
           ? (Path()..addRect(Rect.fromLTRB(left, top, right, bottom)))
           : (Path()
             ..moveTo(left, foldY)
@@ -1353,11 +1405,14 @@ class _FoldablePaperPainter extends CustomPainter {
             ..lineTo(left, bottom)
             ..close());
       _drawPaperBody(canvas, sheet);
+
+      // Vertical center crease hint
       canvas.drawLine(
         Offset(midX, top),
         Offset(midX, bottom),
-        _creasePaint(alpha: 0.35, width: 1),
+        _creasePaint(alpha: 0.30, width: 1),
       );
+
       _drawFoldingFlap(
         canvas: canvas,
         creaseA: Offset(left, foldY),
@@ -1370,15 +1425,17 @@ class _FoldablePaperPainter extends CustomPainter {
 
       _drawMessage(
         canvas,
-        Rect.fromLTRB(left + 16, foldY + 8, right - 16, bottom - 16),
+        Rect.fromLTRB(left + 16, foldY + 10, right - 16, bottom - 16),
         message,
-        opacity: 0.85 - t * 0.35,
+        opacity: 0.88 - p * 0.38,
       );
       return;
     }
 
-    // ── STAGE 2: fold top-right corner (left already done) ──
+    // ── STAGE 2: fold top-right corner (left already folded) ──
     if (stage == 2) {
+      final p = _s(t);
+      // Body shape after stage-1 fold: pentagon
       final cutBody = Path()
         ..moveTo(left, foldY)
         ..lineTo(midX, top)
@@ -1387,8 +1444,8 @@ class _FoldablePaperPainter extends CustomPainter {
         ..lineTo(left, bottom)
         ..close();
 
-      if (t < 0.5) {
-        // Still show right corner attached
+      // Before the right flap reaches mid, still show the pre-cut rect
+      if (p < 0.5) {
         final pre = Path()
           ..moveTo(left, foldY)
           ..lineTo(midX, top)
@@ -1414,7 +1471,7 @@ class _FoldablePaperPainter extends CustomPainter {
       canvas.drawLine(
         Offset(midX, top),
         Offset(midX, bottom),
-        _creasePaint(alpha: 0.35, width: 1),
+        _creasePaint(alpha: 0.30, width: 1),
       );
 
       _drawFoldingFlap(
@@ -1428,9 +1485,9 @@ class _FoldablePaperPainter extends CustomPainter {
 
       _drawMessage(
         canvas,
-        Rect.fromLTRB(left + 16, foldY + 12, right - 16, bottom - 16),
+        Rect.fromLTRB(left + 16, foldY + 14, right - 16, bottom - 16),
         message,
-        opacity: 0.45,
+        opacity: 0.48,
       );
       return;
     }
@@ -1440,33 +1497,31 @@ class _FoldablePaperPainter extends CustomPainter {
       final p = _s(t);
       final (scale, shade) = _foldPerspective(p);
 
-      // Left half always visible (ground)
+      // Left half always visible (ground side)
       final leftHalf = Path()
         ..moveTo(left, foldY)
         ..lineTo(midX, top)
         ..lineTo(midX, bottom)
         ..lineTo(left, bottom)
         ..close();
-      _drawPaperBody(canvas, leftHalf, shade: 0.02);
+      _drawPaperBody(canvas, leftHalf, shade: 0.02, showLines: false);
 
-      // Settled nose triangle on left
-      final nose = Path()
+      // Settled nose triangle on left (both wings already folded)
+      final noseLeft = Path()
         ..moveTo(left, foldY)
         ..lineTo(midX, top)
         ..lineTo(midX, foldY)
         ..close();
-      canvas.drawPath(nose, _paperFill(shade: 0.16));
-      canvas.drawPath(nose, _edgePaint(width: 0.9));
+      canvas.drawPath(noseLeft, _paperFill(shade: 0.16));
+      canvas.drawPath(noseLeft, _edgePaint(width: 0.9));
 
-      // Right half folding over
       final halfW = w / 2;
-      final foldedWidth = halfW * scale;
 
       // Shadow under the closing flap
       if (p > 0.05 && p < 0.95) {
         final shadowW = halfW * (1 - p) + 8;
         canvas.drawRect(
-          Rect.fromLTRB(midX - (p > 0.5 ? foldedWidth : 0), top, midX + shadowW, bottom),
+          Rect.fromLTRB(midX - (p > 0.5 ? halfW * scale : 0), top, midX + shadowW, bottom),
           Paint()
             ..color = Colors.black.withValues(alpha: 0.08 + shade * 0.12)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
@@ -1476,20 +1531,21 @@ class _FoldablePaperPainter extends CustomPainter {
       if (p < 0.5) {
         // Right side still open, collapsing toward spine
         final openW = halfW * scale;
+        final skewTop = (foldY - top) * (1 - scale).clamp(0.0, 1.0) * 0.12;
         final rightHalf = Path()
           ..moveTo(midX, top)
-          ..lineTo(midX + openW, top + (foldY - top) * (1 - scale).clamp(0.0, 1.0) * 0.15)
-          ..lineTo(midX + openW, bottom)
+          ..lineTo(midX + openW, top + skewTop)
+          ..lineTo(midX + openW, bottom - skewTop * 0.5)
           ..lineTo(midX, bottom)
           ..close();
         canvas.drawPath(rightHalf, _paperFill(shade: shade * 0.4));
         // Right nose remnant
         final rightNose = Path()
           ..moveTo(midX, top)
-          ..lineTo(midX + openW * 0.85, foldY - (foldY - top) * (1 - scale) * 0.3)
+          ..lineTo(midX + openW * 0.88, foldY - (foldY - top) * (1 - scale) * 0.25)
           ..lineTo(midX, foldY)
           ..close();
-        canvas.drawPath(rightNose, _paperFill(shade: 0.2 + shade * 0.3));
+        canvas.drawPath(rightNose, _paperFill(shade: 0.20 + shade * 0.28));
         canvas.drawPath(rightHalf, _edgePaint());
       } else {
         // Flipped onto left side
@@ -1497,26 +1553,26 @@ class _FoldablePaperPainter extends CustomPainter {
         final over = Path()
           ..moveTo(midX, top)
           ..lineTo(midX - flipW, top + 4)
-          ..lineTo(midX - flipW, bottom)
+          ..lineTo(midX - flipW, bottom - 2)
           ..lineTo(midX, bottom)
           ..close();
         canvas.drawPath(
           over.shift(const Offset(-2, 2)),
           Paint()
-            ..color = Colors.black.withValues(alpha: 0.12)
+            ..color = Colors.black.withValues(alpha: 0.13)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
         );
         canvas.drawPath(over, _paperFill(shade: 0.12 + shade * 0.15));
         // Inner fold shading near spine
         canvas.drawRect(
-          Rect.fromLTRB(midX - 6, top, midX, bottom),
+          Rect.fromLTRB(midX - 7, top, midX, bottom),
           Paint()
             ..shader = LinearGradient(
               colors: [
-                _foldShadow.withValues(alpha: 0.25),
+                _foldShadow.withValues(alpha: 0.28),
                 Colors.transparent,
               ],
-            ).createShader(Rect.fromLTRB(midX - 6, top, midX, bottom)),
+            ).createShader(Rect.fromLTRB(midX - 7, top, midX, bottom)),
         );
         canvas.drawPath(over, _edgePaint());
       }
@@ -1525,13 +1581,13 @@ class _FoldablePaperPainter extends CustomPainter {
       canvas.drawLine(
         Offset(midX, top),
         Offset(midX, bottom),
-        _creasePaint(alpha: 0.85, width: 1.6),
+        _creasePaint(alpha: 0.88, width: 1.8),
       );
 
       // Guide dashed half-fold
       if (p < 0.3) {
         final dash = Paint()
-          ..color = const Color(0xFFFF2E74).withValues(alpha: 0.35)
+          ..color = const Color(0xFFFF2E74).withValues(alpha: 0.38)
           ..strokeWidth = 1.2
           ..style = PaintingStyle.stroke;
         canvas.drawLine(Offset(midX, top + 8), Offset(midX, bottom - 8), dash);
@@ -1539,68 +1595,71 @@ class _FoldablePaperPainter extends CustomPainter {
       return;
     }
 
-    // ── STAGE 4: fold wings down (side view of half-folded plane) ──
+    // ── STAGE 4: fold wings down ──
+    // After stage 3 the paper is folded in half and held vertically.
+    // We now view it from the front: a tall narrow shape, and wings fold
+    // out symmetrically from the top edge.
     if (stage == 4) {
       final p = _s(t);
-      // Body is a vertical strip (half sheet), wings fold out from top edge
-      final bodyW = 28.0;
-      final bodyLeft = midX - bodyW / 2;
-      final bodyRight = midX + bodyW / 2;
-      final noseY = top + 8;
-      final tailY = bottom - 4;
 
-      // Wing span grows as we fold
-      final wingSpan = 8 + 58 * p;
-      final wingDrop = 12 + 70 * p;
+      // Fuselage (body) geometry - uses the FULL vertical space
+      const bodyHalfW = 16.0;
+      final noseY = top + 4;
+      final tailY = bottom - 6;
+      final bodyLeft = midX - bodyHalfW;
+      final bodyRight = midX + bodyHalfW;
 
-      // Soft table shadow
+      // Wings grow outward as p goes 0→1
+      // Max wing span should fill the canvas well
+      final wingSpan = 10.0 + 95.0 * p;   // up to 105px each side
+      final wingAngle = 0.55 + p * 0.30;   // how far down the trailing edge drops
+      final wingTipY = noseY + (tailY - noseY) * wingAngle;
+
+      // ── Soft table shadow ──
       canvas.drawOval(
         Rect.fromCenter(
-          center: Offset(cx, tailY + 10),
-          width: 90 + wingSpan * 0.4,
-          height: 18,
+          center: Offset(cx, tailY + 14),
+          width: 100 + wingSpan * 0.6,
+          height: 22,
         ),
         Paint()
-          ..color = Colors.black.withValues(alpha: 0.18)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+          ..color = Colors.black.withValues(alpha: 0.20)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
       );
 
-      // Left wing
+      // ── Build wing paths ──
+      // Wings are proper quadrilaterals: nose → tip → tail → body
       final leftWing = Path()
-        ..moveTo(midX, noseY)
-        ..lineTo(midX - wingSpan, noseY + wingDrop * 0.55)
-        ..lineTo(midX - wingSpan * 0.85, tailY - 20)
-        ..lineTo(bodyLeft, tailY - 8)
-        ..lineTo(bodyLeft, noseY + 20)
+        ..moveTo(midX, noseY)                          // nose
+        ..lineTo(midX - wingSpan, wingTipY)            // wingtip
+        ..lineTo(midX - wingSpan * 0.78, tailY - 18)  // trailing edge inner
+        ..lineTo(bodyLeft, tailY - 6)                  // body tail
+        ..lineTo(bodyLeft, noseY + 22)                 // body front
         ..close();
 
-      // Right wing
       final rightWing = Path()
         ..moveTo(midX, noseY)
-        ..lineTo(midX + wingSpan, noseY + wingDrop * 0.55)
-        ..lineTo(midX + wingSpan * 0.85, tailY - 20)
-        ..lineTo(bodyRight, tailY - 8)
-        ..lineTo(bodyRight, noseY + 20)
+        ..lineTo(midX + wingSpan, wingTipY)
+        ..lineTo(midX + wingSpan * 0.78, tailY - 18)
+        ..lineTo(bodyRight, tailY - 6)
+        ..lineTo(bodyRight, noseY + 22)
         ..close();
 
-      // Wings with slight shade difference
-      canvas.drawPath(
-        leftWing.shift(const Offset(-1, 3)),
-        Paint()
-          ..color = Colors.black.withValues(alpha: 0.12)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
-      );
-      canvas.drawPath(
-        rightWing.shift(const Offset(1, 3)),
-        Paint()
-          ..color = Colors.black.withValues(alpha: 0.12)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
-      );
+      // ── Shadows ──
+      for (final (wing, dx) in [(leftWing, -1.5), (rightWing, 1.5)]) {
+        canvas.drawPath(
+          wing.shift(Offset(dx, 4)),
+          Paint()
+            ..color = Colors.black.withValues(alpha: 0.13)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+        );
+      }
 
-      canvas.drawPath(leftWing, _paperFill(shade: 0.08 + p * 0.05));
-      canvas.drawPath(rightWing, _paperFill(shade: 0.04));
+      // ── Wing fills ──
+      canvas.drawPath(leftWing, _paperFill(shade: 0.10 + p * 0.04));
+      canvas.drawPath(rightWing, _paperFill(shade: 0.05));
 
-      // Wing gradients
+      // ── Wing surface gradients ──
       for (final wing in [leftWing, rightWing]) {
         final b = wing.getBounds();
         canvas.save();
@@ -1612,126 +1671,151 @@ class _FoldablePaperPainter extends CustomPainter {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.white.withValues(alpha: 0.35),
-                _paperWarm.withValues(alpha: 0.2),
-                _foldShadow.withValues(alpha: 0.12),
+                Colors.white.withValues(alpha: 0.38),
+                _paperWarm.withValues(alpha: 0.18),
+                _foldShadow.withValues(alpha: 0.14),
               ],
             ).createShader(b),
         );
         canvas.restore();
-        canvas.drawPath(wing, _edgePaint());
+        canvas.drawPath(wing, _edgePaint(width: 1.1));
       }
 
-      // Fuselage (center body)
+      // ── Fuselage ──
       final body = Path()
-        ..moveTo(midX, noseY - 4)
-        ..lineTo(bodyRight, noseY + 16)
+        ..moveTo(midX, noseY - 6)
+        ..lineTo(bodyRight, noseY + 18)
         ..lineTo(bodyRight, tailY)
-        ..lineTo(midX, tailY + 6)
+        ..lineTo(midX, tailY + 8)
         ..lineTo(bodyLeft, tailY)
-        ..lineTo(bodyLeft, noseY + 16)
+        ..lineTo(bodyLeft, noseY + 18)
         ..close();
-      canvas.drawPath(body, _paperFill(shade: 0.2));
-      canvas.drawPath(body, _edgePaint(width: 1.2));
+      _drawSoftShadow(canvas, body, blur: 8, dy: 3);
+      canvas.drawPath(body, _paperFill(shade: 0.22));
+      canvas.drawPath(body, _edgePaint(width: 1.3));
 
-      // Wing root creases
+      // ── Wing root creases ──
       canvas.drawLine(
         Offset(midX, noseY),
-        Offset(midX - wingSpan * 0.7, noseY + wingDrop * 0.4),
-        _creasePaint(alpha: 0.65 + p * 0.2, width: 1.3),
+        Offset(midX - wingSpan * 0.72, noseY + (tailY - noseY) * wingAngle * 0.6),
+        _creasePaint(alpha: 0.62 + p * 0.22, width: 1.4),
       );
       canvas.drawLine(
         Offset(midX, noseY),
-        Offset(midX + wingSpan * 0.7, noseY + wingDrop * 0.4),
-        _creasePaint(alpha: 0.65 + p * 0.2, width: 1.3),
+        Offset(midX + wingSpan * 0.72, noseY + (tailY - noseY) * wingAngle * 0.6),
+        _creasePaint(alpha: 0.62 + p * 0.22, width: 1.4),
       );
 
-      // Center spine
+      // ── Center spine ──
       canvas.drawLine(
-        Offset(midX, noseY - 2),
-        Offset(midX, tailY + 2),
-        _creasePaint(alpha: 0.8, width: 1.5),
+        Offset(midX, noseY - 4),
+        Offset(midX, tailY + 4),
+        _creasePaint(alpha: 0.85, width: 1.7),
       );
 
-      // Hint arrow while early
-      if (p < 0.25) {
+      // ── Hint arrows while early ──
+      if (p < 0.22) {
         final arrowPaint = Paint()
-          ..color = const Color(0xFFFF2E74).withValues(alpha: 0.5)
+          ..color = const Color(0xFFFF2E74).withValues(alpha: 0.55)
           ..strokeWidth = 2
           ..strokeCap = StrokeCap.round
           ..style = PaintingStyle.stroke;
-        canvas.drawLine(
-          Offset(midX - 40, noseY + 10),
-          Offset(midX - 40, noseY + 40),
-          arrowPaint,
-        );
-        canvas.drawLine(
-          Offset(midX + 40, noseY + 10),
-          Offset(midX + 40, noseY + 40),
-          arrowPaint,
-        );
+        final arrowY1 = noseY + 16.0;
+        final arrowY2 = noseY + 52.0;
+        canvas.drawLine(Offset(midX - 52, arrowY1), Offset(midX - 52, arrowY2), arrowPaint);
+        canvas.drawLine(Offset(midX + 52, arrowY1), Offset(midX + 52, arrowY2), arrowPaint);
+        // Arrow heads
+        canvas.drawLine(Offset(midX - 52, arrowY2), Offset(midX - 44, arrowY2 - 10), arrowPaint);
+        canvas.drawLine(Offset(midX - 52, arrowY2), Offset(midX - 60, arrowY2 - 10), arrowPaint);
+        canvas.drawLine(Offset(midX + 52, arrowY2), Offset(midX + 44, arrowY2 - 10), arrowPaint);
+        canvas.drawLine(Offset(midX + 52, arrowY2), Offset(midX + 60, arrowY2 - 10), arrowPaint);
       }
       return;
     }
 
-    // ── STAGE 5: final crease polish → plane icon ──
+    // ── STAGE 5: final crease polish → plane silhouette ──
     if (stage == 5) {
       final p = _s(t);
-      // Morph from winged body to classic dart silhouette
+      // Morph from winged body (stage-4 end state) to the classic dart
       final morph = p;
 
-      final bodyW = 28.0 * (1 - morph * 0.3);
-      final wingSpan = 66.0 * (1 - morph * 0.15);
-      final noseY = top + 20 + morph * 30;
-      final tailY = bottom - 20 - morph * 10;
+      // At stage 5, start = stage 4 fully formed, end = finished plane
+      const bodyHalfW = 16.0;
+      final noseY = top + 4 + morph * 36;   // nose rises as we morph
+      final tailY = bottom - 6 - morph * 12;
+
+      // Wing span narrows slightly as plane orients horizontally
+      final wingSpan = (10.0 + 95.0) * (1 - morph * 0.18);
+      final wingAngle = 0.85 * (1 - morph * 0.12);
+      final wingTipY = noseY + (tailY - noseY) * wingAngle;
 
       if (morph < 0.55) {
-        // Still wings form with deepening crease
+        // Wings still mostly vertical – just deepening crease
         final leftWing = Path()
-          ..moveTo(cx, noseY)
-          ..lineTo(cx - wingSpan, noseY + 40)
-          ..lineTo(cx - wingSpan * 0.8, tailY - 16)
-          ..lineTo(cx - bodyW / 2, tailY)
+          ..moveTo(midX, noseY)
+          ..lineTo(midX - wingSpan, wingTipY)
+          ..lineTo(midX - wingSpan * 0.78, tailY - 18)
+          ..lineTo(midX - bodyHalfW, tailY)
           ..close();
         final rightWing = Path()
-          ..moveTo(cx, noseY)
-          ..lineTo(cx + wingSpan, noseY + 40)
-          ..lineTo(cx + wingSpan * 0.8, tailY - 16)
-          ..lineTo(cx + bodyW / 2, tailY)
+          ..moveTo(midX, noseY)
+          ..lineTo(midX + wingSpan, wingTipY)
+          ..lineTo(midX + wingSpan * 0.78, tailY - 18)
+          ..lineTo(midX + bodyHalfW, tailY)
           ..close();
 
         _drawSoftShadow(canvas, leftWing);
         _drawSoftShadow(canvas, rightWing);
-        canvas.drawPath(leftWing, _paperFill(shade: 0.1));
+        canvas.drawPath(leftWing, _paperFill(shade: 0.10));
         canvas.drawPath(rightWing, _paperFill(shade: 0.05));
-        canvas.drawPath(leftWing, _edgePaint());
-        canvas.drawPath(rightWing, _edgePaint());
+        for (final w in [leftWing, rightWing]) {
+          final b = w.getBounds();
+          canvas.save();
+          canvas.clipPath(w);
+          canvas.drawRect(
+            b,
+            Paint()
+              ..shader = LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withValues(alpha: 0.35),
+                  _paperWarm.withValues(alpha: 0.18),
+                  _foldShadow.withValues(alpha: 0.16),
+                ],
+              ).createShader(b),
+          );
+          canvas.restore();
+          canvas.drawPath(w, _edgePaint());
+        }
 
-        // Animated crease stroke
-        final creaseLen = morph * 2;
-        final creasePaint = Paint()
-          ..shader = LinearGradient(
-            colors: [
-              const Color(0xFFFF2E74).withValues(alpha: 0.0),
-              const Color(0xFFFF2E74).withValues(alpha: 0.85),
-              const Color(0xFFFF2E74).withValues(alpha: 0.0),
-            ],
-          ).createShader(Rect.fromLTWH(cx - 50, cy - 2, 100, 4))
-          ..strokeWidth = 2.5
-          ..strokeCap = StrokeCap.round
-          ..style = PaintingStyle.stroke;
-        canvas.drawLine(
-          Offset(cx - 48 * creaseLen.clamp(0.0, 1.0), cy),
-          Offset(cx + 48 * creaseLen.clamp(0.0, 1.0), cy),
-          creasePaint,
-        );
+        // Animated center crease sweep
+        final creaseFrac = (morph * 2).clamp(0.0, 1.0);
+        if (creaseFrac > 0) {
+          canvas.drawLine(
+            Offset(cx - 58 * creaseFrac, cy),
+            Offset(cx + 58 * creaseFrac, cy),
+            Paint()
+              ..shader = LinearGradient(
+                colors: [
+                  const Color(0xFFFF2E74).withValues(alpha: 0.0),
+                  const Color(0xFFFF2E74).withValues(alpha: 0.90),
+                  const Color(0xFFFF2E74).withValues(alpha: 0.0),
+                ],
+              ).createShader(Rect.fromLTWH(cx - 60, cy - 2, 120, 4))
+              ..strokeWidth = 2.8
+              ..strokeCap = StrokeCap.round
+              ..style = PaintingStyle.stroke,
+          );
+        }
 
         canvas.drawLine(
-          Offset(cx, noseY),
-          Offset(cx, tailY),
-          _creasePaint(alpha: 0.75, width: 1.6),
+          Offset(midX, noseY),
+          Offset(midX, tailY),
+          _creasePaint(alpha: 0.80, width: 1.7),
         );
       } else {
+        // Transition into finished plane silhouette
         final planeT = ((morph - 0.55) / 0.45).clamp(0.0, 1.0);
         _drawFinishedPlane(canvas, cx, cy, planeT);
       }

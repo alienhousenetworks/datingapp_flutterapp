@@ -89,7 +89,10 @@ class CallTelemetry {
     _recordCandidate(candidate, isLocal: false);
   }
 
-  void markTurnFallback() => _turnFallback = true;
+  void markTurnFallback() {
+    _turnFallback = true;
+    // Escalation attempted; final route still decided by selected candidate types.
+  }
 
   void _recordCandidate(String? line, {required bool isLocal}) {
     if (line == null || line.isEmpty) return;
@@ -99,7 +102,6 @@ class CallTelemetry {
     final families = isLocal ? _localFamilies : _remoteFamilies;
     types[type] = (types[type] ?? 0) + 1;
     families[family] = (families[family] ?? 0) + 1;
-    if (type == 'relay') _turnFallback = true;
   }
 
   Future<void> _logIceState(RTCIceConnectionState state) async {
@@ -124,29 +126,71 @@ class CallTelemetry {
     if (pc == null) return;
     try {
       final stats = await pc.getStats();
+      // Prefer the active nominated pair; fall back to succeeded pairs.
+      // Mobile WebRTC often omits `selected=true` — without this we mis-report TURN usage.
+      StatsReport? bestPair;
       for (final report in stats) {
-        final type = report.type;
+        if (report.type != 'candidate-pair' &&
+            report.type != 'remote-candidate-pair') {
+          continue;
+        }
         final v = report.values;
-        if (type == 'candidate-pair' && v['selected']?.toString() == 'true') {
-          final localId = v['localCandidateId']?.toString();
-          final remoteId = v['remoteCandidateId']?.toString();
+        final selected = v['selected'] == true ||
+            v['selected']?.toString() == 'true';
+        final nominated = v['nominated'] == true ||
+            v['nominated']?.toString() == 'true';
+        final state = v['state']?.toString() ?? '';
+        final succeeded = state == 'succeeded' || state == 'in-progress';
+        if (selected || nominated || succeeded) {
+          if (bestPair == null || selected || nominated) {
+            bestPair = report;
+            if (selected) break;
+          }
+        }
+      }
+      if (bestPair != null) {
+        final v = bestPair.values;
+        final localId = v['localCandidateId']?.toString();
+        final remoteId = v['remoteCandidateId']?.toString();
+        for (final r in stats) {
+          if (r.id == localId) {
+            _selectedLocalType = r.values['candidateType']?.toString() ??
+                r.values['candidate_type']?.toString();
+          }
+          if (r.id == remoteId) {
+            _selectedRemoteType = r.values['candidateType']?.toString() ??
+                r.values['candidate_type']?.toString();
+          }
+        }
+        // Fallback: parse from candidateId fields if types missing
+        if ((_selectedLocalType == null || _selectedLocalType!.isEmpty) &&
+            localId != null) {
           for (final r in stats) {
-            if (r.id == localId) {
+            if (r.type == 'local-candidate' && r.id == localId) {
               _selectedLocalType = r.values['candidateType']?.toString();
             }
-            if (r.id == remoteId) {
+          }
+        }
+        if ((_selectedRemoteType == null || _selectedRemoteType!.isEmpty) &&
+            remoteId != null) {
+          for (final r in stats) {
+            if (r.type == 'remote-candidate' && r.id == remoteId) {
               _selectedRemoteType = r.values['candidateType']?.toString();
             }
           }
-          final rtt = double.tryParse(
-            v['currentRoundTripTime']?.toString() ?? '',
-          );
-          if (rtt != null && rtt > 0) {
-            _rttSum += rtt * 1000;
-            _rttCount++;
-            if (rtt * 1000 > _maxRtt) _maxRtt = rtt * 1000;
-          }
         }
+        final rtt = double.tryParse(
+          v['currentRoundTripTime']?.toString() ?? '',
+        );
+        if (rtt != null && rtt > 0) {
+          _rttSum += rtt * 1000;
+          _rttCount++;
+          if (rtt * 1000 > _maxRtt) _maxRtt = rtt * 1000;
+        }
+      }
+      for (final report in stats) {
+        final type = report.type;
+        final v = report.values;
         if (type == 'inbound-rtp') {
           final loss = int.tryParse(v['packetsLost']?.toString() ?? '');
           final recv = int.tryParse(v['packetsReceived']?.toString() ?? '');
@@ -193,7 +237,32 @@ class CallTelemetry {
         ? 'ipv6'
         : 'ipv4';
 
-    final ctx = await DeviceContextService.instance.getContext();
+    final ctx = await DeviceContextService.instance.getContext(refreshNetwork: true);
+
+    final actualTurnUsed = localType == 'relay' ||
+        remoteType == 'relay' ||
+        (_turnFallback && localType.isEmpty && remoteType.isEmpty);
+    final p2pSuccess = establishmentMs != null &&
+        !actualTurnUsed &&
+        !(localType == 'relay' || remoteType == 'relay');
+
+    // Infer a client-side failure hint when TURN was required
+    String failureReason = '';
+    if (!p2pSuccess) {
+      final noLocalSrflx = (_localTypes['srflx'] ?? 0) == 0;
+      final noRemoteSrflx = (_remoteTypes['srflx'] ?? 0) == 0;
+      final noLocalV6 = (_localFamilies['ipv6'] ?? 0) == 0;
+      final noRemoteV6 = (_remoteFamilies['ipv6'] ?? 0) == 0;
+      if (noLocalSrflx && noRemoteSrflx) {
+        failureReason = 'no_srflx_either_side';
+      } else if (noLocalV6 && noRemoteV6) {
+        failureReason = 'no_ipv6_either_side';
+      } else if (actualTurnUsed) {
+        failureReason = 'turn_relay_required';
+      } else if (establishmentMs == null) {
+        failureReason = 'ice_never_connected';
+      }
+    }
 
     final payload = {
       'call_session_id': callSessionId,
@@ -208,9 +277,9 @@ class CallTelemetry {
       'remote_candidate_families': _remoteFamilies,
       'selected_local_candidate_type': localType.isEmpty ? null : localType,
       'selected_remote_candidate_type': remoteType.isEmpty ? null : remoteType,
-      'p2p_success': !_turnFallback && localType != 'relay' && remoteType != 'relay',
-      'turn_fallback_occurrence': _turnFallback,
-      'fallback_used': _turnFallback,
+      'p2p_success': p2pSuccess,
+      'turn_fallback_occurrence': actualTurnUsed,
+      'fallback_used': actualTurnUsed,
       'average_rtt': avgRtt,
       'max_rtt': _maxRtt > 0 ? _maxRtt : null,
       'average_packet_loss': avgLoss,
@@ -220,14 +289,16 @@ class CallTelemetry {
       'recovery_attempts': _recoveryAttempts,
       'connection_type': pathFamily == 'ipv6' ? '$route-ipv6' : route,
       'connection_establishment_ms': establishmentMs,
-      'turn_fallback_count': _turnFallback ? 1 : 0,
+      'turn_fallback_count': actualTurnUsed ? 1 : 0,
       'ice_connected_at_ms': _iceConnectedMs,
       'first_media_received_at_ms': _firstMediaMs,
       'offer_to_answer_ms': (_answerReceivedMs != null && _offerCreatedMs != null)
           ? _offerToAnswerMs()
           : null,
       'ice_restart_count': _iceRestartCount,
-      'caller_isp': ctx.connectionType,
+      // Network type only — ISP is filled server-side from NetworkProfile when known
+      'caller_network_type': ctx.connectionType,
+      'failure_reason': failureReason,
     };
 
     try {

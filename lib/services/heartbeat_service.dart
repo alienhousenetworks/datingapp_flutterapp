@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../core/constants.dart';
 import 'analytics_service.dart';
-import 'api_client.dart';
 import 'device_context_service.dart';
 import 'location_context.dart';
+import 'event_batcher_service.dart';
+
 import 'location_service.dart';
 import 'network_probe_service.dart';
 
@@ -52,8 +52,8 @@ class HeartbeatService {
 
       if (lat == null || lon == null) return;
 
-      await ApiClient.instance.post(
-        AppConstants.usersLastActive,
+      EventBatcherService.instance.enqueue(
+        type: 'heartbeat',
         data: {'lat': lat, 'lon': lon},
       );
       await DeviceContextService.instance.getContext(refreshNetwork: true);
@@ -61,4 +61,5 @@ class HeartbeatService {
       if (kDebugMode) debugPrint('[Heartbeat] ping failed: $e');
     }
   }
+
 }

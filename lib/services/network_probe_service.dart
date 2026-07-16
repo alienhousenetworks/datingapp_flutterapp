@@ -26,12 +26,18 @@ class NetworkProbeService {
 
     RTCPeerConnection? pc;
     try {
+      // Probe with public STUN only (no TURN) so NAT fingerprint is accurate.
       pc = await createPeerConnection({
         'iceServers': [
           {'urls': 'stun:stun.l.google.com:19302'},
           {'urls': 'stun:stun1.l.google.com:19302'},
+          {'urls': 'stun:stun2.l.google.com:19302'},
+          {'urls': 'stun:stun.cloudflare.com:3478'},
         ],
-        'iceCandidatePoolSize': 4,
+        'iceCandidatePoolSize': 6,
+        'iceTransportPolicy': 'all',
+        'bundlePolicy': 'max-bundle',
+        'sdpSemantics': 'unified-plan',
       });
 
       final done = Completer<void>();
@@ -56,8 +62,9 @@ class NetworkProbeService {
       await pc.createDataChannel('network_probe', RTCDataChannelInit());
       final offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      await done.future.timeout(const Duration(seconds: 3), onTimeout: () {});
-      await Future<void>.delayed(const Duration(milliseconds: 800));
+      // Allow enough time for multiple STUN srflx responses (esp. mobile).
+      await done.future.timeout(const Duration(seconds: 5), onTimeout: () {});
+      await Future<void>.delayed(const Duration(milliseconds: 1200));
 
       final gatherSec =
           DateTime.now().difference(gatherStart).inMilliseconds / 1000.0;
@@ -76,6 +83,8 @@ class NetworkProbeService {
           'os': ctx.platform,
           'transport': 'UDP',
           'connection_type': ctx.connectionType,
+          // Helps admin network-pair matrix when carrier name unavailable
+          'connectionType': ctx.connectionType,
         },
       );
     } catch (e) {
