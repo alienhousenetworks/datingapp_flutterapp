@@ -27,11 +27,17 @@ class LocationSyncNotifier extends StateNotifier<LocationSyncState> {
   LocationService get _locationService => _ref.read(locationServiceProvider);
 
   /// Fetches GPS and PATCHes latitude/longitude to the backend.
+  /// Soft-fails: keeps prior profile location / headers when GPS is unknown.
   Future<bool> syncToProfile({bool force = false}) async {
     if (state.isSyncing) return false;
 
     final profile = _ref.read(profileProvider).profile;
     if (!force && profile != null && profile.hasLocation) {
+      // Still refresh in-memory headers for API geo middleware
+      LocationContext.instance.update(
+        lat: profile.latitude,
+        lon: profile.longitude,
+      );
       return true;
     }
 
@@ -39,6 +45,15 @@ class LocationSyncNotifier extends StateNotifier<LocationSyncState> {
 
     final result = await _locationService.getCurrentLocation();
     if (result.location == null) {
+      // Prefer existing profile coords over hard-failing the whole app shell
+      if (profile != null && profile.hasLocation) {
+        LocationContext.instance.update(
+          lat: profile.latitude,
+          lon: profile.longitude,
+        );
+        state = state.copyWith(isSyncing: false, lastError: null);
+        return true;
+      }
       state = state.copyWith(
         isSyncing: false,
         lastError: result.error ?? 'Location unavailable',
@@ -48,8 +63,7 @@ class LocationSyncNotifier extends StateNotifier<LocationSyncState> {
 
     final loc = result.location!;
     LocationContext.instance.update(lat: loc.latitude, lon: loc.longitude);
-    final ok =
-        await _ref.read(profileProvider.notifier).updateProfile({
+    final ok = await _ref.read(profileProvider.notifier).updateProfile({
       'latitude': loc.latitude,
       'longitude': loc.longitude,
     });
