@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/confession_model.dart';
 import '../services/confession_service.dart';
@@ -51,13 +53,21 @@ class ConfessionsNotifier extends StateNotifier<ConfessionsState> {
 
   ConfessionsNotifier(this._ref, this._service) : super(const ConfessionsState());
 
-  Future<({double lat, double lon})?> _resolveCoords() async {
+  /// Fast coords for feed — profile only. Never wait on GPS (can take 10–15s).
+  ({double lat, double lon})? _quickProfileCoords() {
     final profile = _ref.read(profileProvider).profile;
     if (profile != null && profile.hasLocation) {
       return (lat: profile.latitude!, lon: profile.longitude!);
     }
+    return null;
+  }
 
-    await _ref.read(locationSyncProvider.notifier).syncToProfile();
+  /// Full coords for posting only (may request GPS once).
+  Future<({double lat, double lon})?> _resolveCoordsForPost() async {
+    final quick = _quickProfileCoords();
+    if (quick != null) return quick;
+
+    await _ref.read(locationSyncProvider.notifier).syncToProfile(force: true);
     final refreshed = _ref.read(profileProvider).profile;
     if (refreshed != null && refreshed.hasLocation) {
       return (lat: refreshed.latitude!, lon: refreshed.longitude!);
@@ -76,7 +86,9 @@ class ConfessionsNotifier extends StateNotifier<ConfessionsState> {
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {
-      final coords = await _resolveCoords();
+      // Instant path: profile coords or global feed (no lat/lon).
+      // Do NOT await GPS — that was freezing the confessions tab for ~15s.
+      final coords = _quickProfileCoords();
       final items = await _service.getFeed(
         latitude: coords?.lat,
         longitude: coords?.lon,
@@ -84,6 +96,7 @@ class ConfessionsNotifier extends StateNotifier<ConfessionsState> {
 
       var moodTags = state.moodTags;
       if (moodTags.isEmpty) {
+        // Don't block feed on moods; load in parallel best-effort
         moodTags = await _service.getMoodTags();
       }
 
@@ -91,7 +104,13 @@ class ConfessionsNotifier extends StateNotifier<ConfessionsState> {
         items: items,
         moodTags: moodTags,
         isLoading: false,
+        clearError: true,
       );
+
+      // Background: warm location for next open / posts (non-blocking)
+      if (coords == null) {
+        unawaited(_ref.read(locationSyncProvider.notifier).syncToProfile());
+      }
     } on ConfessionException catch (e) {
       state = state.copyWith(isLoading: false, error: e.message);
     } catch (e) {
@@ -111,7 +130,7 @@ class ConfessionsNotifier extends StateNotifier<ConfessionsState> {
     state = state.copyWith(isPosting: true, clearPostError: true);
 
     try {
-      final coords = await _resolveCoords();
+      final coords = await _resolveCoordsForPost();
       if (coords == null) {
         state = state.copyWith(
           isPosting: false,

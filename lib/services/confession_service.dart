@@ -22,11 +22,28 @@ class ConfessionService {
       params['lon'] = longitude;
     }
 
-    final response = await _client.get(
-      AppConstants.socialFeed,
-      params: params.isEmpty ? null : params,
-    );
-    return _parseList(response.data);
+    try {
+      final response = await _client.get(
+        AppConstants.socialFeed,
+        params: params.isEmpty ? null : params,
+      );
+      final items = _parseList(response.data);
+      // If geo hybrid returned empty, fall back to global feed once
+      if (items.isEmpty && params.isNotEmpty) {
+        final global = await _client.get(AppConstants.socialFeed);
+        return _parseList(global.data);
+      }
+      return items;
+    } on DioException catch (e) {
+      // Soft-fail: try global feed without coords if geo request fails
+      if (params.isNotEmpty) {
+        try {
+          final global = await _client.get(AppConstants.socialFeed);
+          return _parseList(global.data);
+        } catch (_) {}
+      }
+      throw ConfessionException(_parseError(e));
+    }
   }
 
   Future<List<MoodTagOption>> getMoodTags() async {
@@ -222,24 +239,29 @@ class ConfessionService {
   }
 
   List<Confession> _parseList(dynamic data) {
+    List<dynamic>? raw;
     if (data is List) {
-      return data
-          .whereType<Map>()
-          .map((e) => Confession.fromJson(Map<String, dynamic>.from(e)))
-          .where((c) => c.text.isNotEmpty)
-          .toList();
-    }
-    if (data is Map) {
+      raw = data;
+    } else if (data is Map) {
       final results = data['results'];
-      if (results is List) {
-        return results
-            .whereType<Map>()
-            .map((e) => Confession.fromJson(Map<String, dynamic>.from(e)))
-            .where((c) => c.text.isNotEmpty)
-            .toList();
+      if (results is List) raw = results;
+    }
+    if (raw == null) return [];
+
+    final out = <Confession>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      try {
+        final c = Confession.fromJson(Map<String, dynamic>.from(entry));
+        // Keep items with id even if text briefly empty (cache miss edge cases)
+        if (c.id.isNotEmpty || c.text.isNotEmpty) {
+          out.add(c);
+        }
+      } catch (_) {
+        continue;
       }
     }
-    return [];
+    return out;
   }
 
   String _parseError(DioException e) {
