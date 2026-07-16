@@ -1,8 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:math';
 import '../../providers/paper_plane_provider.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -597,7 +597,7 @@ class _InteractiveFolder extends StatefulWidget {
 
 class _InteractiveFolderState extends State<_InteractiveFolder>
     with TickerProviderStateMixin {
-  static const _totalStages = 5;
+  static const _totalStages = 6;
 
   int _stage = 1;
   double _dragProgress = 0.0;
@@ -614,7 +614,7 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
     super.initState();
     _foldCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 920),
+      duration: const Duration(milliseconds: 800),
     );
     _foldCurve = CurvedAnimation(
       parent: _foldCtrl,
@@ -624,15 +624,15 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
       setState(() => _dragProgress = _foldCurve.value);
     });
 
-    // Gentle idle float so paper feels alive
+    // Gentle idle float so paper feels alive in space
     _floatCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2800),
+      duration: const Duration(milliseconds: 3000),
     )..repeat(reverse: true);
 
     _launchCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1100),
+      duration: const Duration(milliseconds: 1400),
     );
   }
 
@@ -649,14 +649,13 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
     setState(() => _isAnimating = true);
     HapticFeedback.mediumImpact();
 
-    // Snap crease near the midpoint for a paper "click"
     final from = _dragProgress;
     _foldCtrl.value = from;
     await _foldCtrl.forward();
     if (!mounted) return;
 
     HapticFeedback.selectionClick();
-    await Future.delayed(const Duration(milliseconds: 280));
+    await Future.delayed(const Duration(milliseconds: 200));
     if (!mounted) return;
 
     if (_stage < _totalStages) {
@@ -688,24 +687,26 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
         delta = -details.delta.dx + details.delta.dy;
         break;
       case 3:
-        delta = -details.delta.dx;
+        delta = details.delta.dx + details.delta.dy * 0.5;
         break;
       case 4:
-        delta = details.delta.dy;
+        delta = -details.delta.dx + details.delta.dy * 0.5;
         break;
       case 5:
-        delta = details.delta.dx.abs() + details.delta.dy.abs();
+        delta = -details.delta.dx;
+        break;
+      case 6:
+        delta = details.delta.dy;
         break;
     }
 
     if (delta <= 0) return;
     setState(() {
-      _dragProgress = (_dragProgress + delta / 140).clamp(0.0, 1.0);
-      // Soft haptic ticks as the fold progresses
+      _dragProgress = (_dragProgress + delta / 180).clamp(0.0, 1.0);
       if (_dragProgress > 0.12 && _dragProgress < 0.15) {
         HapticFeedback.selectionClick();
       }
-      if (_dragProgress >= 0.22) {
+      if (_dragProgress >= 0.25) {
         _triggerAutoFold();
       }
     });
@@ -716,32 +717,38 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
       case 1:
         return (
           title: 'Fold top-left corner',
-          helper: 'Drag the corner to the center crease',
-          guide: const Alignment(-0.55, -0.55),
+          helper: 'Drag the corner to the center line',
+          guide: const Alignment(-0.65, -0.65),
         );
       case 2:
         return (
           title: 'Fold top-right corner',
-          helper: 'Match the other side to the center line',
-          guide: const Alignment(0.55, -0.55),
+          helper: 'Match the right corner to the center line',
+          guide: const Alignment(0.65, -0.65),
         );
       case 3:
         return (
-          title: 'Fold in half',
-          helper: 'Close the paper along the spine',
-          guide: const Alignment(0.6, 0.05),
+          title: 'Fold left edge diagonal',
+          helper: 'Fold the new diagonal edge to the center',
+          guide: const Alignment(-0.55, -0.1),
         );
       case 4:
         return (
-          title: 'Fold the wings',
-          helper: 'Pull each wing down to form the body',
-          guide: const Alignment(-0.15, -0.35),
+          title: 'Fold right edge diagonal',
+          helper: 'Fold the right diagonal edge to the center',
+          guide: const Alignment(0.55, -0.1),
+        );
+      case 5:
+        return (
+          title: 'Fold in half',
+          helper: 'Close the plane along the center spine',
+          guide: const Alignment(0.65, 0.15),
         );
       default:
         return (
-          title: 'Crease & launch',
-          helper: 'Drag along the center to lock the fold',
-          guide: Alignment.center,
+          title: 'Fold the wings down',
+          helper: 'Pull the wings down to lock the fold',
+          guide: const Alignment(0.0, -0.2),
         );
     }
   }
@@ -750,128 +757,180 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
   Widget build(BuildContext context) {
     final copy = _copy;
     final stageFraction = ((_stage - 1) + _dragProgress) / _totalStages;
+    final screenSize = MediaQuery.of(context).size;
 
     return Container(
-      color: const Color(0xFF0F0F11),
-      child: Column(
+      // Full screen background with dark premium nebula theme
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF070709),
+            Color(0xFF0F0F16),
+            Color(0xFF140B18),
+          ],
+        ),
+      ),
+      child: Stack(
         children: [
-          AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white70,
-              ),
-              onPressed: _isLaunching ? null : widget.onCancel,
-            ),
-            title: const Text(
-              'Fold your plane',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+          // Background ambient light sparkles/circles
+          Positioned(
+            top: screenSize.height * 0.15,
+            left: screenSize.width * 0.1,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFFF2E74).withOpacity(0.04),
               ),
             ),
-            centerTitle: true,
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(28, 4, 28, 0),
-            child: Column(
-              children: [
-                // Stage progress bar
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: stageFraction.clamp(0.0, 1.0),
-                    minHeight: 4,
-                    backgroundColor: Colors.white12,
-                    valueColor: const AlwaysStoppedAnimation(Color(0xFFFF2E74)),
+          Positioned(
+            bottom: screenSize.height * 0.2,
+            right: screenSize.width * 0.15,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF8A2EFF).withOpacity(0.03),
+              ),
+            ),
+          ),
+          Column(
+            children: [
+              AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                leading: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white70,
+                  ),
+                  onPressed: _isLaunching ? null : widget.onCancel,
+                ),
+                title: const Text(
+                  'Origami Desk',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  'STAGE $_stage OF $_totalStages',
-                  style: const TextStyle(
-                    color: Color(0xFFFF2E74),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.6,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 280),
-                  child: Text(
-                    copy.title,
-                    key: ValueKey(_stage),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                centerTitle: true,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(28, 4, 28, 0),
+                child: Column(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: stageFraction.clamp(0.0, 1.0),
+                        minHeight: 5,
+                        backgroundColor: Colors.white12,
+                        valueColor: const AlwaysStoppedAnimation(Color(0xFFFF2E74)),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'STAGE $_stage OF $_totalStages',
+                      style: const TextStyle(
+                        color: Color(0xFFFF2E74),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.6,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 280),
+                      child: Text(
+                        copy.title,
+                        key: ValueKey(_stage),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _isLaunching ? 'Taking flight…' : copy.helper,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  _isLaunching ? 'Taking flight…' : copy.helper,
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: 14,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: AnimatedBuilder(
-              animation: Listenable.merge([_floatCtrl, _launchCtrl]),
-              builder: (context, _) {
-                final floatY = (0.5 - _floatCtrl.value) * 6;
-                final launchT = Curves.easeInCubic.transform(_launchCtrl.value);
-                final launchDx = launchT * 320;
-                final launchDy = -launchT * 220;
-                final launchRot = -launchT * 0.55;
-                final launchScale = 1.0 - launchT * 0.35;
-                final launchOpacity = 1.0 - (launchT * 1.15).clamp(0.0, 1.0);
+              ),
+              Expanded(
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([_floatCtrl, _launchCtrl]),
+                  builder: (context, _) {
+                    final floatY = (0.5 - _floatCtrl.value) * 8;
+                    final launchT = Curves.easeInOutCubic.transform(_launchCtrl.value);
+                    
+                    // Advanced flight trajectory: wind up slightly back/down, then swoosh forward/up
+                    // Using bezier curve dynamics for launch path
+                    final launchDx = launchT < 0.2 
+                        ? -launchT * 30 
+                        : (launchT - 0.2) * 550 - 6;
+                    final launchDy = launchT < 0.2 
+                        ? launchT * 20 
+                        : -(launchT - 0.2) * 600 + 4;
+                        
+                    // Opacity fades near end of animation
+                    final launchOpacity = 1.0 - (launchT * 1.25 - 0.25).clamp(0.0, 1.0);
 
-                return Center(
-                  child: Opacity(
-                    opacity: launchOpacity,
-                    child: Transform.translate(
-                      offset: Offset(launchDx, floatY + launchDy),
-                      child: Transform.rotate(
-                        angle: launchRot,
-                        child: Transform.scale(
-                          scale: launchScale,
+                    // 3D rotation matrix calculation
+                    final transformMatrix = Matrix4.identity()
+                      ..setEntry(3, 2, 0.001) // perspective
+                      ..translate(launchDx, floatY + launchDy, 0.0)
+                      ..rotateX(-launchT * 0.3)
+                      ..rotateY(launchT * 0.8)
+                      ..rotateZ(-launchT * 0.4)
+                      ..scale(1.0 - launchT * 0.45);
+
+                    return Center(
+                      child: Opacity(
+                        opacity: launchOpacity,
+                        child: Transform(
+                          transform: transformMatrix,
+                          alignment: Alignment.center,
                           child: GestureDetector(
                             onPanUpdate: _onPanUpdate,
                             child: SizedBox(
-                              // Larger canvas so the paper is always big
-                              width: 340,
-                              height: 380,
+                              // Large full screen canvas
+                              width: screenSize.width * 0.9,
+                              height: screenSize.height * 0.55,
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
-                                  // Soft ambient glow under paper
+                                  // Soft dynamic neon glow
                                   Container(
-                                    width: 200,
-                                    height: 230,
+                                    width: 240,
+                                    height: 300,
                                     decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(24),
+                                      borderRadius: BorderRadius.circular(32),
                                       boxShadow: [
                                         BoxShadow(
                                           color: const Color(0xFFFF2E74)
-                                              .withValues(alpha: 0.12 + _dragProgress * 0.08),
-                                          blurRadius: 60,
-                                          spreadRadius: 8,
+                                              .withValues(alpha: 0.15 + _dragProgress * 0.1),
+                                          blurRadius: 70,
+                                          spreadRadius: 10,
                                         ),
                                       ],
                                     ),
                                   ),
                                   CustomPaint(
-                                    size: const Size(340, 380),
+                                    size: Size(screenSize.width * 0.85, screenSize.height * 0.5),
                                     painter: _FoldablePaperPainter(
                                       stage: _stage,
                                       stageProgress: _dragProgress,
@@ -893,24 +952,24 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 28),
-            child: Text(
-              _isLaunching
-                  ? '✈️  Away it goes'
-                  : 'Drag to fold  ·  release to auto-complete',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.35),
-                fontSize: 12,
-                letterSpacing: 0.3,
+                    );
+                  },
+                ),
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 32),
+                child: Text(
+                  _isLaunching
+                      ? '✈️  Launching into the clouds!'
+                      : 'Swipe in direction of fold to fold the paper',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 13,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -938,10 +997,10 @@ class _PulseIndicatorState extends State<_PulseIndicator>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _scale = Tween<double>(begin: 0.75, end: 1.35).animate(
+    _scale = Tween<double>(begin: 0.8, end: 1.4).animate(
       CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
     );
-    _opacity = Tween<double>(begin: 0.45, end: 1.0).animate(
+    _opacity = Tween<double>(begin: 0.4, end: 1.0).animate(
       CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
     );
   }
@@ -962,8 +1021,8 @@ class _PulseIndicatorState extends State<_PulseIndicator>
           child: Transform.scale(
             scale: _scale.value,
             child: Container(
-              width: 22,
-              height: 22,
+              width: 24,
+              height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: const RadialGradient(
@@ -972,15 +1031,15 @@ class _PulseIndicatorState extends State<_PulseIndicator>
                 border: Border.all(color: Colors.white70, width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFF2E74).withValues(alpha: 0.55),
-                    blurRadius: 12,
+                    color: const Color(0xFFFF2E74).withValues(alpha: 0.6),
+                    blurRadius: 14,
                     spreadRadius: 2,
                   ),
                 ],
               ),
               child: const Icon(
-                Icons.touch_app_rounded,
-                size: 12,
+                Icons.swipe_rounded,
+                size: 13,
                 color: Colors.white,
               ),
             ),
@@ -991,12 +1050,7 @@ class _PulseIndicatorState extends State<_PulseIndicator>
   }
 }
 
-// ─── Realistic origami paper plane painter ───────────────────────────────
-//
-// Paper dimensions are deliberately large (w=190, h=240) so the sheet fills
-// the canvas well at every stage.  Each stage operates on a consistent set of
-// anchor points so stage transitions look seamless.
-//
+// ─── Realistic origami paper plane painter (6 Stages) ────────────────────────
 class _FoldablePaperPainter extends CustomPainter {
   final int stage;
   final double stageProgress;
@@ -1005,12 +1059,12 @@ class _FoldablePaperPainter extends CustomPainter {
   final double launchProgress;
 
   // Paper palette
-  static const _paper = Color(0xFFFFFBF5);
-  static const _paperWarm = Color(0xFFF5EDE0);
-  static const _paperEdge = Color(0xFFE8DCC8);
-  static const _crease = Color(0xFFD4C4A8);
-  static const _foldShadow = Color(0xFF8A7A62);
-  static const _ink = Color(0xFF2C2416);
+  static const _paper = Color(0xFFFAFAFA);
+  static const _paperWarm = Color(0xFFF2E9DE);
+  static const _paperEdge = Color(0xFFDFD1BE);
+  static const _crease = Color(0xFFCBB69B);
+  static const _foldShadow = Color(0xFF7E6E56);
+  static const _ink = Color(0xFF282015);
 
   _FoldablePaperPainter({
     required this.stage,
@@ -1020,14 +1074,11 @@ class _FoldablePaperPainter extends CustomPainter {
     this.launchProgress = 0,
   });
 
-  // Smoothstep for organic motion
   double _s(double t) {
     t = t.clamp(0.0, 1.0);
     return t * t * (3 - 2 * t);
   }
 
-  // Fold perspective: 0→1 maps to facing camera → edge-on → flipped
-  // Returns (scale along fold axis, shade 0–1)
   (double scale, double shade) _foldPerspective(double t) {
     final p = _s(t);
     if (p < 0.5) {
@@ -1047,25 +1098,25 @@ class _FoldablePaperPainter extends CustomPainter {
       ..isAntiAlias = true;
   }
 
-  Paint _edgePaint({double width = 1.1}) => Paint()
+  Paint _edgePaint({double width = 1.2}) => Paint()
     ..color = _paperEdge
     ..style = PaintingStyle.stroke
     ..strokeWidth = width
     ..strokeJoin = StrokeJoin.round
     ..isAntiAlias = true;
 
-  Paint _creasePaint({double alpha = 0.55, double width = 1.2}) => Paint()
+  Paint _creasePaint({double alpha = 0.55, double width = 1.3}) => Paint()
     ..color = _crease.withValues(alpha: alpha)
     ..style = PaintingStyle.stroke
     ..strokeWidth = width
     ..strokeCap = StrokeCap.round
     ..isAntiAlias = true;
 
-  void _drawSoftShadow(Canvas canvas, Path path, {double blur = 14, double dy = 6}) {
+  void _drawSoftShadow(Canvas canvas, Path path, {double blur = 18, double dy = 8}) {
     canvas.drawPath(
       path.shift(Offset(0, dy)),
       Paint()
-        ..color = Colors.black.withValues(alpha: 0.22)
+        ..color = Colors.black.withValues(alpha: 0.25)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur)
         ..isAntiAlias = true,
     );
@@ -1081,9 +1132,9 @@ class _FoldablePaperPainter extends CustomPainter {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Colors.white.withValues(alpha: 0.38),
+          Colors.white.withValues(alpha: 0.45),
           Colors.transparent,
-          _paperWarm.withValues(alpha: 0.32),
+          _paperWarm.withValues(alpha: 0.35),
         ],
         stops: const [0.0, 0.45, 1.0],
       ).createShader(bounds)
@@ -1091,15 +1142,15 @@ class _FoldablePaperPainter extends CustomPainter {
     canvas.save();
     canvas.clipPath(path);
     canvas.drawRect(bounds, highlight);
-    // Faint ruled lines for "letter paper" feel early on
-    if (showLines && stage <= 2) {
+    
+    if (showLines && stage <= 4) {
       final line = Paint()
-        ..color = const Color(0xFFB8D4E8).withValues(alpha: 0.22)
-        ..strokeWidth = 0.8;
-      for (double y = bounds.top + 28; y < bounds.bottom - 12; y += 14) {
+        ..color = const Color(0xFFB0D2EB).withValues(alpha: 0.25)
+        ..strokeWidth = 0.9;
+      for (double y = bounds.top + 32; y < bounds.bottom - 12; y += 16) {
         canvas.drawLine(
-          Offset(bounds.left + 12, y),
-          Offset(bounds.right - 12, y),
+          Offset(bounds.left + 16, y),
+          Offset(bounds.right - 16, y),
           line,
         );
       }
@@ -1108,7 +1159,6 @@ class _FoldablePaperPainter extends CustomPainter {
     canvas.drawPath(path, _edgePaint());
   }
 
-  /// Fold a triangle flap over a crease using perspective scale.
   void _drawFoldingFlap({
     required Canvas canvas,
     required Offset creaseA,
@@ -1159,37 +1209,17 @@ class _FoldablePaperPainter extends CustomPainter {
 
     if (p > 0.02 && p < 0.98) {
       canvas.drawPath(
-        flap.shift(Offset(perp.dx * 3, perp.dy * 3 + 2)),
+        flap.shift(Offset(perp.dx * 4, perp.dy * 4 + 2)),
         Paint()
-          ..color = Colors.black.withValues(alpha: 0.12 + shade * 0.18)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+          ..color = Colors.black.withValues(alpha: 0.15 + shade * 0.2)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
       );
     }
 
     canvas.drawPath(flap, _paperFill(shade: shade * 0.55));
-    final fb = flap.getBounds();
-    canvas.save();
-    canvas.clipPath(flap);
-    canvas.drawRect(
-      fb,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            _foldShadow.withValues(alpha: shade * 0.35),
-            Colors.white.withValues(alpha: 0.15 * (1 - shade)),
-            _foldShadow.withValues(alpha: shade * 0.25),
-          ],
-        ).createShader(fb),
-    );
-    canvas.restore();
     canvas.drawPath(flap, _edgePaint(width: 1.0));
+    canvas.drawLine(creaseA, creaseB, _creasePaint(alpha: 0.7 + shade * 0.25, width: 1.5));
 
-    // Crease hinge
-    canvas.drawLine(creaseA, creaseB, _creasePaint(alpha: 0.65 + shade * 0.2, width: 1.4));
-
-    // Ghost guide of destination
     if (showGuide && p < 0.85) {
       final ghost = Path()
         ..moveTo(creaseA.dx, creaseA.dy)
@@ -1205,88 +1235,90 @@ class _FoldablePaperPainter extends CustomPainter {
       canvas.drawPath(
         ghost,
         Paint()
-          ..color = const Color(0xFFFF2E74).withValues(alpha: 0.28 * (1 - p))
+          ..color = const Color(0xFFFF2E74).withValues(alpha: 0.3 * (1 - p))
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 1
+          ..strokeWidth = 1.2
           ..strokeJoin = StrokeJoin.round,
       );
     }
   }
 
-  void _drawMessage(
-    Canvas canvas,
-    Rect area,
-    String msg, {
-    required double opacity,
-  }) {
+  void _drawMessage(Canvas canvas, Rect area, String msg, {required double opacity}) {
     if (opacity <= 0.05) return;
-    final textToShow = msg.trim().isEmpty ? 'Your message…' : msg;
-    final truncated =
-        textToShow.length > 56 ? '${textToShow.substring(0, 54)}…' : textToShow;
+    final textToShow = msg.trim().isEmpty ? 'Write your message...' : msg;
+    final truncated = textToShow.length > 80 ? '${textToShow.substring(0, 77)}…' : textToShow;
 
     final tp = TextPainter(
       text: TextSpan(
         text: truncated,
         style: TextStyle(
           color: _ink.withValues(alpha: opacity),
-          fontSize: 11.5,
-          height: 1.45,
+          fontSize: 13.0,
+          height: 1.5,
           fontWeight: FontWeight.w500,
           fontFamily: 'serif',
         ),
       ),
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.center,
-      maxLines: 5,
-      ellipsis: '…',
+      maxLines: 6,
     );
-    tp.layout(maxWidth: area.width - 20);
+    tp.layout(maxWidth: area.width - 24);
     tp.paint(
       canvas,
-      Offset(
-        area.center.dx - tp.width / 2,
-        area.center.dy - tp.height / 2,
-      ),
+      Offset(area.center.dx - tp.width / 2, area.center.dy - tp.height / 2),
     );
   }
 
-  // Classic dart silhouette – wider, more realistic
   Path _planeSilhouette(double cx, double cy, double scale) {
     return Path()
-      // Nose tip (right)
-      ..moveTo(cx + 68 * scale, cy)
-      // Upper wing trailing edge
-      ..lineTo(cx - 58 * scale, cy - 36 * scale)
-      // Inner upper wing fold line
-      ..lineTo(cx - 22 * scale, cy - 5 * scale)
-      // Lower wing inner
-      ..lineTo(cx - 58 * scale, cy + 36 * scale)
-      // Lower wing trailing edge back to body
-      ..lineTo(cx - 26 * scale, cy + 7 * scale)
+      ..moveTo(cx + 85 * scale, cy)
+      ..lineTo(cx - 75 * scale, cy - 44 * scale)
+      ..lineTo(cx - 30 * scale, cy - 6 * scale)
+      ..lineTo(cx - 75 * scale, cy + 44 * scale)
+      ..lineTo(cx - 35 * scale, cy + 8 * scale)
       ..close();
   }
 
   void _drawFinishedPlane(Canvas canvas, double cx, double cy, double t) {
-    final scale = 1.0 + t * 0.12;
+    final scale = 1.1 + t * 0.15;
     final path = _planeSilhouette(cx, cy, scale);
 
-    // Outer glow
+    // Glowing flight exhaust effect
+    if (isLaunching) {
+      final exhaustPaint = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFFFF2E74).withValues(alpha: 0.9),
+            const Color(0xFF8A2EFF).withValues(alpha: 0.3),
+            Colors.transparent
+          ],
+        ).createShader(Rect.fromCircle(center: Offset(cx - 65 * scale, cy), radius: 60 * t));
+      canvas.drawCircle(Offset(cx - 65 * scale, cy), 50 * t, exhaustPaint);
+
+      // Wind trails/sparks
+      final sparkPaint = Paint()
+        ..color = const Color(0xFFFF6B9D).withOpacity(1.0 - t)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(cx - 90 * scale, cy - 10), 4 * (1 - t), sparkPaint);
+      canvas.drawCircle(Offset(cx - 100 * scale, cy + 15), 3 * (1 - t), sparkPaint);
+    }
+
     canvas.drawPath(
       path,
       Paint()
-        ..color = const Color(0xFFFF2E74).withValues(alpha: 0.18 + t * 0.28)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20),
+        ..color = const Color(0xFFFF2E74).withValues(alpha: 0.2 + t * 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 22),
     );
-    _drawSoftShadow(canvas, path, blur: 20, dy: 10);
+    _drawSoftShadow(canvas, path, blur: 24, dy: 12);
 
-    // Main body fill
-    canvas.drawPath(path, _paperFill(shade: 0.05));
+    canvas.drawPath(path, _paperFill(shade: 0.03));
 
-    // Upper wing – slightly lighter
+    // Wings detailing
     final upperWing = Path()
-      ..moveTo(cx + 68 * scale, cy)
-      ..lineTo(cx - 58 * scale, cy - 36 * scale)
-      ..lineTo(cx - 22 * scale, cy - 5 * scale)
+      ..moveTo(cx + 85 * scale, cy)
+      ..lineTo(cx - 75 * scale, cy - 44 * scale)
+      ..lineTo(cx - 30 * scale, cy - 6 * scale)
       ..close();
     canvas.save();
     canvas.clipPath(upperWing);
@@ -1296,19 +1328,15 @@ class _FoldablePaperPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Colors.white.withValues(alpha: 0.22),
-            Colors.transparent,
-          ],
+          colors: [Colors.white.withValues(alpha: 0.3), Colors.transparent],
         ).createShader(upperWing.getBounds()),
     );
     canvas.restore();
 
-    // Lower wing – slightly darker
     final lowerWing = Path()
-      ..moveTo(cx + 68 * scale, cy)
-      ..lineTo(cx - 26 * scale, cy + 7 * scale)
-      ..lineTo(cx - 58 * scale, cy + 36 * scale)
+      ..moveTo(cx + 85 * scale, cy)
+      ..lineTo(cx - 35 * scale, cy + 8 * scale)
+      ..lineTo(cx - 75 * scale, cy + 44 * scale)
       ..close();
     canvas.save();
     canvas.clipPath(lowerWing);
@@ -1318,83 +1346,52 @@ class _FoldablePaperPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Colors.transparent,
-            _foldShadow.withValues(alpha: 0.18),
-          ],
+          colors: [Colors.transparent, _foldShadow.withValues(alpha: 0.2)],
         ).createShader(lowerWing.getBounds()),
     );
     canvas.restore();
 
-    // Center body spine (thick triangle)
+    // Fuselage spine
     final spine = Path()
-      ..moveTo(cx + 64 * scale, cy)
-      ..lineTo(cx - 24 * scale, cy - 6 * scale)
-      ..lineTo(cx - 24 * scale, cy + 6 * scale)
+      ..moveTo(cx + 80 * scale, cy)
+      ..lineTo(cx - 32 * scale, cy - 8 * scale)
+      ..lineTo(cx - 32 * scale, cy + 8 * scale)
       ..close();
-    canvas.drawPath(spine, _paperFill(shade: 0.20));
+    canvas.drawPath(spine, _paperFill(shade: 0.22));
 
-    // Wing crease lines
-    canvas.drawLine(
-      Offset(cx + 56 * scale, cy),
-      Offset(cx - 50 * scale, cy - 24 * scale),
-      _creasePaint(alpha: 0.72, width: 1.4),
-    );
-    canvas.drawLine(
-      Offset(cx + 56 * scale, cy),
-      Offset(cx - 50 * scale, cy + 24 * scale),
-      _creasePaint(alpha: 0.72, width: 1.4),
-    );
-    // Center spine crease
-    canvas.drawLine(
-      Offset(cx + 64 * scale, cy),
-      Offset(cx - 26 * scale, cy),
-      _creasePaint(alpha: 0.55, width: 1.0),
-    );
+    canvas.drawLine(Offset(cx + 70 * scale, cy), Offset(cx - 65 * scale, cy - 30 * scale), _creasePaint(alpha: 0.75, width: 1.5));
+    canvas.drawLine(Offset(cx + 70 * scale, cy), Offset(cx - 65 * scale, cy + 30 * scale), _creasePaint(alpha: 0.75, width: 1.5));
+    canvas.drawLine(Offset(cx + 80 * scale, cy), Offset(cx - 35 * scale, cy), _creasePaint(alpha: 0.6, width: 1.2));
 
-    canvas.drawPath(path, _edgePaint(width: 1.4));
-
-    // Specular highlight streak
-    canvas.drawLine(
-      Offset(cx + 42 * scale, cy - 5),
-      Offset(cx - 14 * scale, cy - 14 * scale),
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.60)
-        ..strokeWidth = 2.2
-        ..strokeCap = StrokeCap.round
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
-    );
+    canvas.drawPath(path, _edgePaint(width: 1.5));
   }
 
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
-    final cy = size.height / 2 + 8;
+    final cy = size.height / 2 + 10;
 
-    // ── Paper anchor points (letter-ish ratio, larger than before) ──
-    // Increased from w=148 to w=190, h from 196 to 242
-    const w = 190.0;
-    const h = 242.0;
+    // Significantly increased paper dimensions for full-screen feel
+    const w = 240.0;
+    const h = 310.0;
     final left = cx - w / 2;
     final right = cx + w / 2;
     final top = cy - h / 2;
     final bottom = cy + h / 2;
     final midX = cx;
-    // Classic corner-to-center fold depth (45° from corner)
-    final foldY = top + w / 2; // = top + 95
+    final foldY = top + w / 2;
 
     final t = stageProgress.clamp(0.0, 1.0);
 
-    if (isLaunching || (stage == 5 && t > 0.92)) {
+    if (isLaunching || (stage == 6 && t > 0.92)) {
       final launchT = isLaunching ? launchProgress : (t - 0.92) / 0.08;
       _drawFinishedPlane(canvas, cx, cy, launchT.clamp(0.0, 1.0));
       return;
     }
 
-    // ── STAGE 1: fold top-left corner to center ──
+    // ── STAGE 1: Top-left corner fold ──
     if (stage == 1) {
       final p = _s(t);
-      // Sheet base: full rectangle before fold reaches midpoint, then notched
       final Path sheet = p < 0.5
           ? (Path()..addRect(Rect.fromLTRB(left, top, right, bottom)))
           : (Path()
@@ -1405,13 +1402,7 @@ class _FoldablePaperPainter extends CustomPainter {
             ..lineTo(left, bottom)
             ..close());
       _drawPaperBody(canvas, sheet);
-
-      // Vertical center crease hint
-      canvas.drawLine(
-        Offset(midX, top),
-        Offset(midX, bottom),
-        _creasePaint(alpha: 0.30, width: 1),
-      );
+      canvas.drawLine(Offset(midX, top), Offset(midX, bottom), _creasePaint(alpha: 0.3, width: 1));
 
       _drawFoldingFlap(
         canvas: canvas,
@@ -1423,19 +1414,13 @@ class _FoldablePaperPainter extends CustomPainter {
         showGuide: t < 0.95,
       );
 
-      _drawMessage(
-        canvas,
-        Rect.fromLTRB(left + 16, foldY + 10, right - 16, bottom - 16),
-        message,
-        opacity: 0.88 - p * 0.38,
-      );
+      _drawMessage(canvas, Rect.fromLTRB(left + 24, foldY + 16, right - 24, bottom - 24), message, opacity: 0.9 - p * 0.4);
       return;
     }
 
-    // ── STAGE 2: fold top-right corner (left already folded) ──
+    // ── STAGE 2: Top-right corner fold ──
     if (stage == 2) {
       final p = _s(t);
-      // Body shape after stage-1 fold: pentagon
       final cutBody = Path()
         ..moveTo(left, foldY)
         ..lineTo(midX, top)
@@ -1444,7 +1429,6 @@ class _FoldablePaperPainter extends CustomPainter {
         ..lineTo(left, bottom)
         ..close();
 
-      // Before the right flap reaches mid, still show the pre-cut rect
       if (p < 0.5) {
         final pre = Path()
           ..moveTo(left, foldY)
@@ -1458,21 +1442,13 @@ class _FoldablePaperPainter extends CustomPainter {
         _drawPaperBody(canvas, cutBody);
       }
 
-      // Settled left triangle (previous fold)
       final leftDone = Path()
         ..moveTo(left, foldY)
         ..lineTo(midX, top)
         ..lineTo(midX, foldY)
         ..close();
-      canvas.drawPath(leftDone, _paperFill(shade: 0.14));
+      canvas.drawPath(leftDone, _paperFill(shade: 0.15));
       canvas.drawPath(leftDone, _edgePaint(width: 0.9));
-      canvas.drawLine(Offset(left, foldY), Offset(midX, top), _creasePaint(alpha: 0.75));
-
-      canvas.drawLine(
-        Offset(midX, top),
-        Offset(midX, bottom),
-        _creasePaint(alpha: 0.30, width: 1),
-      );
 
       _drawFoldingFlap(
         canvas: canvas,
@@ -1483,183 +1459,169 @@ class _FoldablePaperPainter extends CustomPainter {
         t: t,
       );
 
-      _drawMessage(
-        canvas,
-        Rect.fromLTRB(left + 16, foldY + 14, right - 16, bottom - 16),
-        message,
-        opacity: 0.48,
-      );
+      _drawMessage(canvas, Rect.fromLTRB(left + 24, foldY + 16, right - 24, bottom - 24), message, opacity: 0.5);
       return;
     }
 
-    // ── STAGE 3: fold in half along vertical center ──
+    // ── STAGE 3: Left Diagonal Fold (Folding new left edge to center) ──
     if (stage == 3) {
-      final p = _s(t);
-      final (scale, shade) = _foldPerspective(p);
+      // Crease line goes from top center tip to some offset on the bottom edge
+      final Offset creaseStart = Offset(midX, top);
+      final Offset creaseEnd = Offset(left + w * 0.35, bottom);
 
-      // Left half always visible (ground side)
-      final leftHalf = Path()
-        ..moveTo(left, foldY)
-        ..lineTo(midX, top)
-        ..lineTo(midX, bottom)
+      final bodyPath = Path()
+        ..moveTo(midX, top)
+        ..lineTo(right, foldY)
+        ..lineTo(right, bottom)
         ..lineTo(left, bottom)
+        ..lineTo(left, foldY)
         ..close();
-      _drawPaperBody(canvas, leftHalf, shade: 0.02, showLines: false);
+      _drawPaperBody(canvas, bodyPath, showLines: false);
 
-      // Settled nose triangle on left (both wings already folded)
-      final noseLeft = Path()
+      // Pre-folded corners settled
+      final leftCorner = Path()
         ..moveTo(left, foldY)
         ..lineTo(midX, top)
         ..lineTo(midX, foldY)
         ..close();
-      canvas.drawPath(noseLeft, _paperFill(shade: 0.16));
-      canvas.drawPath(noseLeft, _edgePaint(width: 0.9));
+      final rightCorner = Path()
+        ..moveTo(right, foldY)
+        ..lineTo(midX, top)
+        ..lineTo(midX, foldY)
+        ..close();
+      canvas.drawPath(leftCorner, _paperFill(shade: 0.12));
+      canvas.drawPath(rightCorner, _paperFill(shade: 0.12));
 
-      final halfW = w / 2;
-
-      // Shadow under the closing flap
-      if (p > 0.05 && p < 0.95) {
-        final shadowW = halfW * (1 - p) + 8;
-        canvas.drawRect(
-          Rect.fromLTRB(midX - (p > 0.5 ? halfW * scale : 0), top, midX + shadowW, bottom),
-          Paint()
-            ..color = Colors.black.withValues(alpha: 0.08 + shade * 0.12)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
-        );
-      }
-
-      if (p < 0.5) {
-        // Right side still open, collapsing toward spine
-        final openW = halfW * scale;
-        final skewTop = (foldY - top) * (1 - scale).clamp(0.0, 1.0) * 0.12;
-        final rightHalf = Path()
-          ..moveTo(midX, top)
-          ..lineTo(midX + openW, top + skewTop)
-          ..lineTo(midX + openW, bottom - skewTop * 0.5)
-          ..lineTo(midX, bottom)
-          ..close();
-        canvas.drawPath(rightHalf, _paperFill(shade: shade * 0.4));
-        // Right nose remnant
-        final rightNose = Path()
-          ..moveTo(midX, top)
-          ..lineTo(midX + openW * 0.88, foldY - (foldY - top) * (1 - scale) * 0.25)
-          ..lineTo(midX, foldY)
-          ..close();
-        canvas.drawPath(rightNose, _paperFill(shade: 0.20 + shade * 0.28));
-        canvas.drawPath(rightHalf, _edgePaint());
-      } else {
-        // Flipped onto left side
-        final flipW = halfW * scale;
-        final over = Path()
-          ..moveTo(midX, top)
-          ..lineTo(midX - flipW, top + 4)
-          ..lineTo(midX - flipW, bottom - 2)
-          ..lineTo(midX, bottom)
-          ..close();
-        canvas.drawPath(
-          over.shift(const Offset(-2, 2)),
-          Paint()
-            ..color = Colors.black.withValues(alpha: 0.13)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
-        );
-        canvas.drawPath(over, _paperFill(shade: 0.12 + shade * 0.15));
-        // Inner fold shading near spine
-        canvas.drawRect(
-          Rect.fromLTRB(midX - 7, top, midX, bottom),
-          Paint()
-            ..shader = LinearGradient(
-              colors: [
-                _foldShadow.withValues(alpha: 0.28),
-                Colors.transparent,
-              ],
-            ).createShader(Rect.fromLTRB(midX - 7, top, midX, bottom)),
-        );
-        canvas.drawPath(over, _edgePaint());
-      }
-
-      // Spine crease
-      canvas.drawLine(
-        Offset(midX, top),
-        Offset(midX, bottom),
-        _creasePaint(alpha: 0.88, width: 1.8),
+      // Folding the diagonal flap
+      _drawFoldingFlap(
+        canvas: canvas,
+        creaseA: creaseStart,
+        creaseB: creaseEnd,
+        tip: Offset(left, foldY),
+        targetTip: Offset(midX, foldY + (bottom - foldY) * 0.2),
+        t: t,
       );
-
-      // Guide dashed half-fold
-      if (p < 0.3) {
-        final dash = Paint()
-          ..color = const Color(0xFFFF2E74).withValues(alpha: 0.38)
-          ..strokeWidth = 1.2
-          ..style = PaintingStyle.stroke;
-        canvas.drawLine(Offset(midX, top + 8), Offset(midX, bottom - 8), dash);
-      }
       return;
     }
 
-    // ── STAGE 4: fold wings down ──
-    // After stage 3 the paper is folded in half and held vertically.
-    // We now view it from the front: a tall narrow shape, and wings fold
-    // out symmetrically from the top edge.
+    // ── STAGE 4: Right Diagonal Fold ──
     if (stage == 4) {
-      final p = _s(t);
+      final Offset creaseStart = Offset(midX, top);
+      final Offset creaseEnd = Offset(right - w * 0.35, bottom);
 
-      // Fuselage (body) geometry - uses the FULL vertical space
-      const bodyHalfW = 16.0;
-      final noseY = top + 4;
-      final tailY = bottom - 6;
+      final bodyPath = Path()
+        ..moveTo(midX, top)
+        ..lineTo(right, foldY)
+        ..lineTo(right, bottom)
+        ..lineTo(left, bottom)
+        ..lineTo(left, foldY)
+        ..close();
+      _drawPaperBody(canvas, bodyPath, showLines: false);
+
+      // Previous left diagonal fold settled
+      final leftDiagDone = Path()
+        ..moveTo(midX, top)
+        ..lineTo(left + w * 0.35, bottom)
+        ..lineTo(left, bottom)
+        ..lineTo(left, foldY)
+        ..close();
+      canvas.drawPath(leftDiagDone, _paperFill(shade: 0.18));
+      canvas.drawPath(leftDiagDone, _edgePaint(width: 1.0));
+
+      final rightCorner = Path()
+        ..moveTo(right, foldY)
+        ..lineTo(midX, top)
+        ..lineTo(midX, foldY)
+        ..close();
+      canvas.drawPath(rightCorner, _paperFill(shade: 0.12));
+
+      _drawFoldingFlap(
+        canvas: canvas,
+        creaseA: creaseStart,
+        creaseB: creaseEnd,
+        tip: Offset(right, foldY),
+        targetTip: Offset(midX, foldY + (bottom - foldY) * 0.2),
+        t: t,
+      );
+      return;
+    }
+
+    // ── STAGE 5: Fold in half ──
+    if (stage == 5) {
+      final p = _s(t);
+      final (scale, shade) = _foldPerspective(p);
+
+      final leftHalf = Path()
+        ..moveTo(left, bottom)
+        ..lineTo(left, foldY)
+        ..lineTo(midX, top)
+        ..lineTo(midX, bottom)
+        ..close();
+      _drawPaperBody(canvas, leftHalf, shade: 0.03, showLines: false);
+
+      if (p < 0.5) {
+        final openW = (w / 2) * scale;
+        final rightHalf = Path()
+          ..moveTo(midX, top)
+          ..lineTo(midX + openW, foldY)
+          ..lineTo(midX + openW, bottom)
+          ..lineTo(midX, bottom)
+          ..close();
+        canvas.drawPath(rightHalf, _paperFill(shade: shade * 0.45));
+        canvas.drawPath(rightHalf, _edgePaint());
+      } else {
+        final flipW = (w / 2) * scale;
+        final over = Path()
+          ..moveTo(midX, top)
+          ..lineTo(midX - flipW, foldY)
+          ..lineTo(midX - flipW, bottom)
+          ..lineTo(midX, bottom)
+          ..close();
+        canvas.drawPath(over, _paperFill(shade: 0.15 + shade * 0.15));
+        canvas.drawPath(over, _edgePaint());
+      }
+
+      canvas.drawLine(Offset(midX, top), Offset(midX, bottom), _creasePaint(alpha: 0.9, width: 2.0));
+      return;
+    }
+
+    // ── STAGE 6: Fold wings down ──
+    if (stage == 6) {
+      final p = _s(t);
+      const bodyHalfW = 20.0;
+      final noseY = top + 8;
+      final tailY = bottom - 10;
       final bodyLeft = midX - bodyHalfW;
       final bodyRight = midX + bodyHalfW;
 
-      // Wings grow outward as p goes 0→1
-      // Max wing span should fill the canvas well
-      final wingSpan = 10.0 + 95.0 * p;   // up to 105px each side
-      final wingAngle = 0.55 + p * 0.30;   // how far down the trailing edge drops
+      final wingSpan = 15.0 + 105.0 * p;
+      final wingAngle = 0.6 + p * 0.25;
       final wingTipY = noseY + (tailY - noseY) * wingAngle;
 
-      // ── Soft table shadow ──
       canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset(cx, tailY + 14),
-          width: 100 + wingSpan * 0.6,
-          height: 22,
-        ),
+        Rect.fromCenter(center: Offset(cx, tailY + 16), width: 120 + wingSpan * 0.7, height: 26),
         Paint()
-          ..color = Colors.black.withValues(alpha: 0.20)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+          ..color = Colors.black.withValues(alpha: 0.22)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14),
       );
 
-      // ── Build wing paths ──
-      // Wings are proper quadrilaterals: nose → tip → tail → body
       final leftWing = Path()
-        ..moveTo(midX, noseY)                          // nose
-        ..lineTo(midX - wingSpan, wingTipY)            // wingtip
-        ..lineTo(midX - wingSpan * 0.78, tailY - 18)  // trailing edge inner
-        ..lineTo(bodyLeft, tailY - 6)                  // body tail
-        ..lineTo(bodyLeft, noseY + 22)                 // body front
+        ..moveTo(midX, noseY)
+        ..lineTo(midX - wingSpan, wingTipY)
+        ..lineTo(midX - wingSpan * 0.8, tailY - 20)
+        ..lineTo(bodyLeft, tailY - 8)
         ..close();
 
       final rightWing = Path()
         ..moveTo(midX, noseY)
         ..lineTo(midX + wingSpan, wingTipY)
-        ..lineTo(midX + wingSpan * 0.78, tailY - 18)
-        ..lineTo(bodyRight, tailY - 6)
-        ..lineTo(bodyRight, noseY + 22)
+        ..lineTo(midX + wingSpan * 0.8, tailY - 20)
+        ..lineTo(bodyRight, tailY - 8)
         ..close();
 
-      // ── Shadows ──
-      for (final (wing, dx) in [(leftWing, -1.5), (rightWing, 1.5)]) {
-        canvas.drawPath(
-          wing.shift(Offset(dx, 4)),
-          Paint()
-            ..color = Colors.black.withValues(alpha: 0.13)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-        );
-      }
+      canvas.drawPath(leftWing, _paperFill(shade: 0.12 + p * 0.05));
+      canvas.drawPath(rightWing, _paperFill(shade: 0.06));
 
-      // ── Wing fills ──
-      canvas.drawPath(leftWing, _paperFill(shade: 0.10 + p * 0.04));
-      canvas.drawPath(rightWing, _paperFill(shade: 0.05));
-
-      // ── Wing surface gradients ──
       for (final wing in [leftWing, rightWing]) {
         final b = wing.getBounds();
         canvas.save();
@@ -1670,155 +1632,27 @@ class _FoldablePaperPainter extends CustomPainter {
             ..shader = LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Colors.white.withValues(alpha: 0.38),
-                _paperWarm.withValues(alpha: 0.18),
-                _foldShadow.withValues(alpha: 0.14),
-              ],
+              colors: [Colors.white.withValues(alpha: 0.4), _paperWarm.withValues(alpha: 0.2), _foldShadow.withValues(alpha: 0.15)],
             ).createShader(b),
         );
         canvas.restore();
-        canvas.drawPath(wing, _edgePaint(width: 1.1));
+        canvas.drawPath(wing, _edgePaint(width: 1.2));
       }
 
-      // ── Fuselage ──
       final body = Path()
-        ..moveTo(midX, noseY - 6)
-        ..lineTo(bodyRight, noseY + 18)
+        ..moveTo(midX, noseY - 8)
+        ..lineTo(bodyRight, noseY + 22)
         ..lineTo(bodyRight, tailY)
-        ..lineTo(midX, tailY + 8)
+        ..lineTo(midX, tailY + 10)
         ..lineTo(bodyLeft, tailY)
-        ..lineTo(bodyLeft, noseY + 18)
+        ..lineTo(bodyLeft, noseY + 22)
         ..close();
-      _drawSoftShadow(canvas, body, blur: 8, dy: 3);
-      canvas.drawPath(body, _paperFill(shade: 0.22));
-      canvas.drawPath(body, _edgePaint(width: 1.3));
+      canvas.drawPath(body, _paperFill(shade: 0.24));
+      canvas.drawPath(body, _edgePaint(width: 1.4));
 
-      // ── Wing root creases ──
-      canvas.drawLine(
-        Offset(midX, noseY),
-        Offset(midX - wingSpan * 0.72, noseY + (tailY - noseY) * wingAngle * 0.6),
-        _creasePaint(alpha: 0.62 + p * 0.22, width: 1.4),
-      );
-      canvas.drawLine(
-        Offset(midX, noseY),
-        Offset(midX + wingSpan * 0.72, noseY + (tailY - noseY) * wingAngle * 0.6),
-        _creasePaint(alpha: 0.62 + p * 0.22, width: 1.4),
-      );
-
-      // ── Center spine ──
-      canvas.drawLine(
-        Offset(midX, noseY - 4),
-        Offset(midX, tailY + 4),
-        _creasePaint(alpha: 0.85, width: 1.7),
-      );
-
-      // ── Hint arrows while early ──
-      if (p < 0.22) {
-        final arrowPaint = Paint()
-          ..color = const Color(0xFFFF2E74).withValues(alpha: 0.55)
-          ..strokeWidth = 2
-          ..strokeCap = StrokeCap.round
-          ..style = PaintingStyle.stroke;
-        final arrowY1 = noseY + 16.0;
-        final arrowY2 = noseY + 52.0;
-        canvas.drawLine(Offset(midX - 52, arrowY1), Offset(midX - 52, arrowY2), arrowPaint);
-        canvas.drawLine(Offset(midX + 52, arrowY1), Offset(midX + 52, arrowY2), arrowPaint);
-        // Arrow heads
-        canvas.drawLine(Offset(midX - 52, arrowY2), Offset(midX - 44, arrowY2 - 10), arrowPaint);
-        canvas.drawLine(Offset(midX - 52, arrowY2), Offset(midX - 60, arrowY2 - 10), arrowPaint);
-        canvas.drawLine(Offset(midX + 52, arrowY2), Offset(midX + 44, arrowY2 - 10), arrowPaint);
-        canvas.drawLine(Offset(midX + 52, arrowY2), Offset(midX + 60, arrowY2 - 10), arrowPaint);
-      }
-      return;
-    }
-
-    // ── STAGE 5: final crease polish → plane silhouette ──
-    if (stage == 5) {
-      final p = _s(t);
-      // Morph from winged body (stage-4 end state) to the classic dart
-      final morph = p;
-
-      // At stage 5, start = stage 4 fully formed, end = finished plane
-      const bodyHalfW = 16.0;
-      final noseY = top + 4 + morph * 36;   // nose rises as we morph
-      final tailY = bottom - 6 - morph * 12;
-
-      // Wing span narrows slightly as plane orients horizontally
-      final wingSpan = (10.0 + 95.0) * (1 - morph * 0.18);
-      final wingAngle = 0.85 * (1 - morph * 0.12);
-      final wingTipY = noseY + (tailY - noseY) * wingAngle;
-
-      if (morph < 0.55) {
-        // Wings still mostly vertical – just deepening crease
-        final leftWing = Path()
-          ..moveTo(midX, noseY)
-          ..lineTo(midX - wingSpan, wingTipY)
-          ..lineTo(midX - wingSpan * 0.78, tailY - 18)
-          ..lineTo(midX - bodyHalfW, tailY)
-          ..close();
-        final rightWing = Path()
-          ..moveTo(midX, noseY)
-          ..lineTo(midX + wingSpan, wingTipY)
-          ..lineTo(midX + wingSpan * 0.78, tailY - 18)
-          ..lineTo(midX + bodyHalfW, tailY)
-          ..close();
-
-        _drawSoftShadow(canvas, leftWing);
-        _drawSoftShadow(canvas, rightWing);
-        canvas.drawPath(leftWing, _paperFill(shade: 0.10));
-        canvas.drawPath(rightWing, _paperFill(shade: 0.05));
-        for (final w in [leftWing, rightWing]) {
-          final b = w.getBounds();
-          canvas.save();
-          canvas.clipPath(w);
-          canvas.drawRect(
-            b,
-            Paint()
-              ..shader = LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.white.withValues(alpha: 0.35),
-                  _paperWarm.withValues(alpha: 0.18),
-                  _foldShadow.withValues(alpha: 0.16),
-                ],
-              ).createShader(b),
-          );
-          canvas.restore();
-          canvas.drawPath(w, _edgePaint());
-        }
-
-        // Animated center crease sweep
-        final creaseFrac = (morph * 2).clamp(0.0, 1.0);
-        if (creaseFrac > 0) {
-          canvas.drawLine(
-            Offset(cx - 58 * creaseFrac, cy),
-            Offset(cx + 58 * creaseFrac, cy),
-            Paint()
-              ..shader = LinearGradient(
-                colors: [
-                  const Color(0xFFFF2E74).withValues(alpha: 0.0),
-                  const Color(0xFFFF2E74).withValues(alpha: 0.90),
-                  const Color(0xFFFF2E74).withValues(alpha: 0.0),
-                ],
-              ).createShader(Rect.fromLTWH(cx - 60, cy - 2, 120, 4))
-              ..strokeWidth = 2.8
-              ..strokeCap = StrokeCap.round
-              ..style = PaintingStyle.stroke,
-          );
-        }
-
-        canvas.drawLine(
-          Offset(midX, noseY),
-          Offset(midX, tailY),
-          _creasePaint(alpha: 0.80, width: 1.7),
-        );
-      } else {
-        // Transition into finished plane silhouette
-        final planeT = ((morph - 0.55) / 0.45).clamp(0.0, 1.0);
-        _drawFinishedPlane(canvas, cx, cy, planeT);
-      }
+      canvas.drawLine(Offset(midX, noseY), Offset(midX - wingSpan * 0.7, noseY + (tailY - noseY) * wingAngle * 0.65), _creasePaint(alpha: 0.65 + p * 0.25, width: 1.5));
+      canvas.drawLine(Offset(midX, noseY), Offset(midX + wingSpan * 0.7, noseY + (tailY - noseY) * wingAngle * 0.65), _creasePaint(alpha: 0.65 + p * 0.25, width: 1.5));
+      canvas.drawLine(Offset(midX, noseY - 6), Offset(midX, tailY + 6), _creasePaint(alpha: 0.9, width: 1.8));
     }
   }
 
@@ -1845,16 +1679,30 @@ class _LaunchSuccessOverlayState extends State<_LaunchSuccessOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _scale;
+  late Animation<double> _planeFlight;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
-    _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    );
+    _scale = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _ctrl,
+        curve: const Interval(0.0, 0.4, curve: Curves.elasticOut),
+      ),
+    );
+    _planeFlight = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _ctrl,
+        curve: const Interval(0.3, 1.0, curve: Curves.easeInOutCubic),
+      ),
+    );
     _ctrl.forward();
 
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(milliseconds: 3200), () {
       if (mounted) widget.onDone();
     });
   }
@@ -1871,22 +1719,50 @@ class _LaunchSuccessOverlayState extends State<_LaunchSuccessOverlay>
       child: ScaleTransition(
         scale: _scale,
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 40),
+          margin: const EdgeInsets.symmetric(horizontal: 32),
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E),
-            borderRadius: BorderRadius.circular(24),
+            color: const Color(0xFF16161E),
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: const Color(0xFFFF2E74).withOpacity(0.4),
+              color: const Color(0xFFFF2E74).withOpacity(0.5),
+              width: 1.5,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF2E74).withOpacity(0.2),
+                blurRadius: 30,
+                spreadRadius: 2,
+              )
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('✈️', style: TextStyle(fontSize: 64)),
-              const SizedBox(height: 16),
+              SizedBox(
+                height: 120,
+                width: double.infinity,
+                child: AnimatedBuilder(
+                  animation: _planeFlight,
+                  builder: (context, _) {
+                    final t = _planeFlight.value;
+                    // Flying paper plane along a bezier curve path inside success box
+                    final dx = (t * 220) - 100;
+                    final dy = -sin(t * pi) * 45;
+                    final rot = -cos(t * pi) * 0.6;
+                    return Transform.translate(
+                      offset: Offset(dx, dy),
+                      child: Transform.rotate(
+                        angle: rot,
+                        child: const Text('✈️', style: TextStyle(fontSize: 56)),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
               const Text(
-                'Your plane is flying!',
+                'Launched Successfully!',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -1894,10 +1770,10 @@ class _LaunchSuccessOverlayState extends State<_LaunchSuccessOverlay>
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(
-                'Someone special might catch it.\nWe\'ll notify you when they do.',
-                style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+                'Your paper plane is high in the sky.\nSomeone special will catch it soon!',
+                style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 14, height: 1.45),
                 textAlign: TextAlign.center,
               ),
             ],
