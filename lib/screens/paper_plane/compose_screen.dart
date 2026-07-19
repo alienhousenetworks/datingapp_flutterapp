@@ -304,12 +304,6 @@ class _PaperPlaneComposeScreenState
                           ),
                         ),
                       ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
 
                     // ── Sticker picker ──

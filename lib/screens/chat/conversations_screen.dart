@@ -228,7 +228,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
         ),
       ),
     );
-  } }
+  }
 
   Widget _buildMainContent(
     AsyncValue<List<Conversation>> conversations,
