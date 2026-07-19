@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import '../core/constants.dart';
 import '../models/profile_model.dart';
 import 'api_client.dart';
@@ -64,15 +66,74 @@ class ProfileService {
     }
   }
 
-  // POST /api/v1/images/upload/
+  // POST /api/v1/images/presign-upload/ -> PUT to R2 -> POST /api/v1/images/confirm-upload/
   Future<void> uploadImage(String filePath) async {
     try {
-      final formData = FormData.fromMap({
-        'image': await MultipartFile.fromFile(filePath),
-      });
-      await _client.postFormData(AppConstants.imagesUpload, formData);
+      final file = File(filePath);
+      final bytes = await file.length();
+      final sizeInMB = bytes / (1024 * 1024);
+      if (sizeInMB > 20.0) {
+        throw Exception("Selected file is too large (maximum 20MB).");
+      }
+
+      final tempDir = Directory.systemTemp;
+      final targetPath = '${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.webp';
+      
+      final compressedFile = await FlutterImageCompress.compressAndGetFile(
+        filePath,
+        targetPath,
+        format: CompressFormat.webp,
+        quality: 80,
+        minWidth: 1080,
+      );
+
+      if (compressedFile == null) {
+        throw Exception("Image compression failed.");
+      }
+
+      final presignResponse = await _client.post(
+        '${AppConstants.apiV1}/images/presign-upload/',
+        data: {
+          'filename': 'image.webp',
+          'content_type': 'image/webp',
+        },
+      );
+
+      final String uploadUrl = presignResponse.data['upload_url'];
+      final String storagePath = presignResponse.data['storage_path'];
+
+      final fileBytes = await File(compressedFile.path).readAsBytes();
+      
+      final cleanDio = Dio();
+      await cleanDio.put(
+        uploadUrl,
+        data: Stream.fromIterable([fileBytes]),
+        options: Options(
+          headers: {
+            'Content-Type': 'image/webp',
+            'Content-Length': fileBytes.length.toString(),
+          },
+        ),
+      );
+
+      await _client.post(
+        '${AppConstants.apiV1}/images/confirm-upload/',
+        data: {
+          'storage_path': storagePath,
+        },
+      );
+
+      try {
+        final f = File(compressedFile.path);
+        if (await f.exists()) {
+          await f.delete();
+        }
+      } catch (_) {}
+
     } on DioException catch (e) {
       throw _parseError(e);
+    } catch (e) {
+      throw e.toString();
     }
   }
 
