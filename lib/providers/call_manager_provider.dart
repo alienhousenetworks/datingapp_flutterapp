@@ -49,6 +49,8 @@ class CallManagerState {
   final bool socketConnected;
   final MediaStream? localStream;
   final MediaStream? remoteStream;
+  final bool isMuted;
+  final bool isVideoOff;
 
   const CallManagerState({
     this.uiState = CallUiState.idle,
@@ -60,6 +62,8 @@ class CallManagerState {
     this.socketConnected = false,
     this.localStream,
     this.remoteStream,
+    this.isMuted = false,
+    this.isVideoOff = false,
   });
 
   CallManagerState copyWith({
@@ -74,6 +78,8 @@ class CallManagerState {
     MediaStream? localStream,
     MediaStream? remoteStream,
     bool clearStreams = false,
+    bool? isMuted,
+    bool? isVideoOff,
   }) =>
       CallManagerState(
         uiState: uiState ?? this.uiState,
@@ -85,6 +91,8 @@ class CallManagerState {
         socketConnected: socketConnected ?? this.socketConnected,
         localStream: clearStreams ? null : (localStream ?? this.localStream),
         remoteStream: clearStreams ? null : (remoteStream ?? this.remoteStream),
+        isMuted: isMuted ?? this.isMuted,
+        isVideoOff: isVideoOff ?? this.isVideoOff,
       );
 }
 
@@ -563,6 +571,28 @@ class CallManagerNotifier extends StateNotifier<CallManagerState> {
     }
     await _resetCallState();
     _endingCall = false;
+  }
+
+  void toggleMute() {
+    final local = state.localStream;
+    if (local != null) {
+      final muted = !state.isMuted;
+      for (final track in local.getAudioTracks()) {
+        track.enabled = !muted;
+      }
+      state = state.copyWith(isMuted: muted);
+    }
+  }
+
+  void toggleVideo() {
+    final local = state.localStream;
+    if (local != null) {
+      final videoOff = !state.isVideoOff;
+      for (final track in local.getVideoTracks()) {
+        track.enabled = !videoOff;
+      }
+      state = state.copyWith(isVideoOff: videoOff);
+    }
   }
 
   void _resetIceNegotiationFlags() {

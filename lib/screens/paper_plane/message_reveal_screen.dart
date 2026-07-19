@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../models/paper_plane_model.dart';
 import '../../providers/paper_plane_provider.dart';
 import '../../widgets/confetti_connect_widget.dart';
+import 'sender_profile_sheet.dart';
 
 class MessageRevealScreen extends ConsumerStatefulWidget {
   const MessageRevealScreen({super.key});
@@ -249,6 +251,176 @@ class _MessageRevealScreenState extends ConsumerState<MessageRevealScreen>
     _floatController.dispose();
     _flyAwayController.dispose();
     super.dispose();
+  }
+
+  // ─── Sender header on the revealed message card ────────────────
+  /// Renders the sender's avatar (real photo or initial), name, username,
+  /// and location. Tapping opens the full SenderProfileSheet.
+  Widget _buildSenderHeader(CatchResult result, BuildContext context) {
+    final profile = result.senderProfile;
+    final hasProfileSheet = profile != null;
+
+    // Build the avatar widget
+    Widget avatarWidget;
+    final photoUrl = profile?.firstImageUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      avatarWidget = ClipOval(
+        child: Image.network(
+          photoUrl,
+          width: 52,
+          height: 52,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _fallbackAvatar(result.senderFirstName),
+        ),
+      );
+    } else {
+      avatarWidget = _fallbackAvatar(result.senderFirstName);
+    }
+
+    final username = profile?.username ?? '';
+    final isOnline = profile?.isOnline ?? false;
+    final isVerified = profile?.isVerified ?? false;
+
+    final headerContent = Row(
+      children: [
+        // Avatar with optional online ring
+        Stack(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isOnline
+                      ? const Color(0xFF00E676)
+                      : Colors.white.withOpacity(0.4),
+                  width: 2.5,
+                ),
+              ),
+              child: ClipOval(child: avatarWidget),
+            ),
+            if (isOnline)
+              Positioned(
+                bottom: 1,
+                right: 1,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00E676),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'A message from the sky',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFF181C1F),
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  if (isVerified) ...[
+                    const SizedBox(width: 5),
+                    const Icon(
+                      Icons.verified_rounded,
+                      size: 14,
+                      color: Color(0xFF1A3AFF),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                [
+                  if (username.isNotEmpty) '@$username',
+                  '${result.senderFirstName}${result.senderAge != null ? ", ${result.senderAge}" : ""}',
+                  if (result.senderCity.isNotEmpty) '📍 ${result.senderCity}',
+                ].join(' · '),
+                style: GoogleFonts.plusJakartaSans(
+                  color: const Color(0xFF40484F),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (hasProfileSheet)
+                Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Text(
+                    'Tap to view profile →',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFFFF8C61),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (result.sticker.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(result.sticker, style: const TextStyle(fontSize: 26)),
+          ),
+      ],
+    );
+
+    if (!hasProfileSheet) return headerContent;
+
+    // Wrap with GestureDetector when profile data is available
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        SenderProfileSheet.show(
+          context,
+          profile: profile,
+          deliveryId: result.deliveryId,
+          onConnect: _isActing ? null : _onConnect,
+          onPass: _isActing ? null : _onPass,
+          isActing: _isActing,
+        );
+      },
+      child: headerContent,
+    );
+  }
+
+  Widget _fallbackAvatar(String name) {
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [Color(0xFFFF8C61), Color(0xFFFF2E74)],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          initial,
+          style: GoogleFonts.plusJakartaSans(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -504,55 +676,8 @@ class _MessageRevealScreenState extends ConsumerState<MessageRevealScreen>
                                     mainAxisSize: MainAxisSize.min,
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      // Sender Header Info
-                                      Row(
-                                        children: [
-                                          Container(
-                                            width: 48,
-                                            height: 48,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              border: Border.all(color: Colors.white, width: 2),
-                                              boxShadow: const [
-                                                BoxShadow(color: Colors.black12, blurRadius: 4),
-                                              ],
-                                              image: const DecorationImage(
-                                                image: NetworkImage(
-                                                  'https://lh3.googleusercontent.com/aida-public/AB6AXuCHlRaQ9tyeV_2ieiex_Xsw8vzJXV4oGNomI5ayrQmaT75A7TLKexqpTD0kyvSG1zHvEX8KEzGK7_xJcS0lm9SUwSTK16AqeLmFUfIJ8otWHh4kj-J1jVbgwYAxdtdHWmCMvv0gjGxa8rgGAZphd0u0fJvdDOtJ4oAZgUgyj0VO4Ebgu9A6IEzkQmJgdg6_0O1YB2YR5DdB_mkWyPhq80UzuWifCo2bCLEawpH7taRxkY3McCOcu1nlRhP30p0jKfYIu7GuaL2wS_MC',
-                                                ),
-                                                fit: BoxFit.cover,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 14),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'A message from the sky',
-                                                  style: GoogleFonts.plusJakartaSans(
-                                                    color: const Color(0xFF181C1F),
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                    letterSpacing: -0.2,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  'Sent by ${result.senderFirstName}, ${result.senderAge ?? "?"} • 📍 ${result.senderCity.isNotEmpty ? result.senderCity : "Unknown Location"}',
-                                                  style: GoogleFonts.plusJakartaSans(
-                                                    color: const Color(0xFF40484F),
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          if (result.sticker.isNotEmpty)
-                                            Text(result.sticker, style: const TextStyle(fontSize: 28)),
-                                        ],
-                                      ),
+                                      // ── Sender Header — tappable to open full profile ──
+                                      _buildSenderHeader(result, context),
                                       const SizedBox(height: 24),
                                       Container(
                                         height: 1,

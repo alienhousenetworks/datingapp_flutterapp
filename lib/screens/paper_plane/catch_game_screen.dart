@@ -75,6 +75,13 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
 
   // ── Net position (moved by tilt or pan gesture) ──
   Offset _netPosition = const Offset(0.5, 0.5); // normalized 0-1
+  Offset _targetNetPosition = const Offset(0.5, 0.5);
+  Offset _shakeOffset = Offset.zero;
+
+  // Low-pass filter values for accelerometer
+  double _filteredAccX = 0.0;
+  double _filteredAccY = 0.0;
+
   bool _hasCaught = false;
   bool _isHoveringClose = false;
 
@@ -85,7 +92,11 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
   late Timer _countdownTimer;
   int _secondsLeft = 60;
   int _pathSeed = 42;
-  late List<Offset> _cloudPositions;
+
+  // Parallax clouds
+  late List<Offset> _cloudsLayer1; // Fast
+  late List<Offset> _cloudsLayer2; // Medium
+  late List<Offset> _cloudsLayer3; // Slow
 
   // Track exact contact position
   Offset _collisionNorm = Offset.zero;
@@ -104,8 +115,13 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
     final gameState = ref.read(catchGameProvider);
     _secondsLeft = gameState.gameConfig?.gameWindowSeconds ?? 120;
     _pathSeed = gameState.gameConfig?.planePathSeed ?? 42;
-    _cloudPositions = _generateClouds();
     _decoPlanes = _generateDecoPlanes();
+
+    // Setup parallax clouds layers
+    final rng = math.Random(_pathSeed);
+    _cloudsLayer1 = List.generate(3, (_) => Offset(rng.nextDouble(), rng.nextDouble() * 0.3));
+    _cloudsLayer2 = List.generate(4, (_) => Offset(rng.nextDouble(), 0.1 + rng.nextDouble() * 0.35));
+    _cloudsLayer3 = List.generate(3, (_) => Offset(rng.nextDouble(), 0.2 + rng.nextDouble() * 0.45));
 
     _gameTickController = AnimationController(
       vsync: this,
@@ -129,6 +145,31 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
               );
             }).toList();
             _planesInitialized = true;
+          }
+
+          // Smooth finger touch net lag tracking
+          if (_controlMode == ControlMode.touch) {
+            _netPosition = Offset(
+              _netPosition.dx + (_targetNetPosition.dx - _netPosition.dx) * 0.15,
+              _netPosition.dy + (_targetNetPosition.dy - _netPosition.dy) * 0.15,
+            );
+          }
+
+          // Drift clouds for parallax layers
+          for (int i = 0; i < _cloudsLayer1.length; i++) {
+            double newX = _cloudsLayer1[i].dx + 0.0008;
+            if (newX > 1.15) newX = -0.15;
+            _cloudsLayer1[i] = Offset(newX, _cloudsLayer1[i].dy);
+          }
+          for (int i = 0; i < _cloudsLayer2.length; i++) {
+            double newX = _cloudsLayer2[i].dx + 0.0004;
+            if (newX > 1.15) newX = -0.15;
+            _cloudsLayer2[i] = Offset(newX, _cloudsLayer2[i].dy);
+          }
+          for (int i = 0; i < _cloudsLayer3.length; i++) {
+            double newX = _cloudsLayer3[i].dx + 0.00015;
+            if (newX > 1.15) newX = -0.15;
+            _cloudsLayer3[i] = Offset(newX, _cloudsLayer3[i].dy);
           }
 
           // Update position for all planes
@@ -161,8 +202,12 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
       _sensorSubscription = accelerometerEventStream().listen((event) {
         if (!mounted || _hasCaught) return;
         setState(() {
-          double dx = (_netPosition.dx - event.x * 0.007).clamp(0.05, 0.95);
-          double dy = (_netPosition.dy + event.y * 0.007).clamp(0.05, 0.95);
+          // Low-pass filter (alpha = 0.15) to eliminate hand tremors
+          _filteredAccX = _filteredAccX + (event.x - _filteredAccX) * 0.15;
+          _filteredAccY = _filteredAccY + (event.y - _filteredAccY) * 0.15;
+
+          double dx = (_netPosition.dx - _filteredAccX * 0.0065).clamp(0.05, 0.95);
+          double dy = (_netPosition.dy + _filteredAccY * 0.0065).clamp(0.05, 0.95);
           _netPosition = Offset(dx, dy);
         });
       }, onError: (_) {});
@@ -197,13 +242,7 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
     );
   }
 
-  List<Offset> _generateClouds() {
-    final rng = math.Random(_pathSeed);
-    return List.generate(
-      5,
-      (_) => Offset(rng.nextDouble(), rng.nextDouble() * 0.5),
-    );
-  }
+
 
   List<DecoPlane> _generateDecoPlanes() {
     final rng = math.Random(_pathSeed + 1);
@@ -300,6 +339,24 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
   void _onPlaneCaught(GamePlane gp) async {
     final notifier = ref.read(catchGameProvider.notifier);
     try {
+      // Trigger satisfying impact screen shake
+      int shakeTicks = 0;
+      Timer.periodic(const Duration(milliseconds: 16), (t) {
+        if (shakeTicks > 12 || !mounted) {
+          t.cancel();
+          setState(() => _shakeOffset = Offset.zero);
+        } else {
+          shakeTicks++;
+          final rng = math.Random();
+          setState(() {
+            _shakeOffset = Offset(
+              (rng.nextDouble() - 0.5) * 12,
+              (rng.nextDouble() - 0.5) * 12,
+            );
+          });
+        }
+      });
+
       await notifier.catchPlane(gp.id);
       var phase = ref.read(catchGameProvider).phase;
       if (phase == GamePhase.error) {
@@ -413,7 +470,7 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
     // Offset the net slightly above the finger (e.g. 60 pixels) so the finger doesn't block the view of the net.
     final targetY = localPosition.dy - 60.0;
     setState(() {
-      _netPosition = Offset(
+      _targetNetPosition = Offset(
         (localPosition.dx / size.width).clamp(0.05, 0.95),
         (targetY / size.height).clamp(0.05, 0.95),
       );
@@ -473,13 +530,16 @@ class _CatchGameScreenState extends ConsumerState<CatchGameScreen>
                         decoPlanes: _decoPlanes,
                         getPlanePos: _planePositionNorm,
                         netNorm: _netPosition,
-                        cloudPositions: _cloudPositions,
+                        cloudsLayer1: _cloudsLayer1,
+                        cloudsLayer2: _cloudsLayer2,
+                        cloudsLayer3: _cloudsLayer3,
                         secondsLeft: _secondsLeft,
                         totalSeconds: gameState.gameConfig?.gameWindowSeconds ?? 120,
                         hasCaught: _hasCaught,
                         morphProgress: _morphProgress.value,
                         collisionNorm: _collisionNorm,
                         isHoveringClose: _isHoveringClose,
+                        shakeOffset: _shakeOffset,
                       ),
                     ),
                   ),
@@ -645,30 +705,40 @@ class _GameCanvasPainter extends CustomPainter {
   final List<DecoPlane> decoPlanes;
   final Offset Function(double t, int seed) getPlanePos;
   final Offset netNorm;
-  final List<Offset> cloudPositions;
+  final List<Offset> cloudsLayer1;
+  final List<Offset> cloudsLayer2;
+  final List<Offset> cloudsLayer3;
   final int secondsLeft;
   final int totalSeconds;
   final bool hasCaught;
   final double morphProgress;
   final Offset collisionNorm;
   final bool isHoveringClose;
+  final Offset shakeOffset;
 
   _GameCanvasPainter({
     required this.gamePlanes,
     required this.decoPlanes,
     required this.getPlanePos,
     required this.netNorm,
-    required this.cloudPositions,
+    required this.cloudsLayer1,
+    required this.cloudsLayer2,
+    required this.cloudsLayer3,
     required this.secondsLeft,
     required this.totalSeconds,
     required this.hasCaught,
     required this.morphProgress,
     required this.collisionNorm,
     required this.isHoveringClose,
+    required this.shakeOffset,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
+    canvas.save();
+    // Apply visual screen shake translation offset
+    canvas.translate(shakeOffset.dx, shakeOffset.dy);
+
     // Bright blue-purple gradient sky background
     final skyRect = Rect.fromLTWH(0, 0, size.width, size.height);
     final skyGrad = const LinearGradient(
@@ -681,9 +751,15 @@ class _GameCanvasPainter extends CustomPainter {
     );
     canvas.drawRect(skyRect, Paint()..shader = skyGrad.createShader(skyRect));
 
-    // Clouds
-    for (final cloud in cloudPositions) {
-      _drawCloud(canvas, size, Offset(cloud.dx * size.width, cloud.dy * size.height));
+    // Parallax Clouds (Slowest/Lowest layer first)
+    for (final cloud in cloudsLayer3) {
+      _drawCloud(canvas, size, Offset(cloud.dx * size.width, cloud.dy * size.height), opacity: 0.08);
+    }
+    for (final cloud in cloudsLayer2) {
+      _drawCloud(canvas, size, Offset(cloud.dx * size.width, cloud.dy * size.height), opacity: 0.14);
+    }
+    for (final cloud in cloudsLayer1) {
+      _drawCloud(canvas, size, Offset(cloud.dx * size.width, cloud.dy * size.height), opacity: 0.22);
     }
 
     // Draw decorative background planes to populate the sky
@@ -691,27 +767,29 @@ class _GameCanvasPainter extends CustomPainter {
       _drawDecoPlane(canvas, size, dp);
     }
 
-    // Net
-    if (!hasCaught || morphProgress < 1.0) {
-      _drawNet(canvas, size, netNorm);
-    }
-
     // Draw all active catching planes
     if (!hasCaught) {
       for (final gp in gamePlanes) {
         final pos = getPlanePos(gp.progress, gp.pathSeed);
-        _drawPlane(canvas, size, pos);
+        _drawPlane(canvas, size, pos, gp);
       }
     } else if (morphProgress < 1.0) {
       _drawMorphTarget(canvas, size);
     }
+
+    // Net (drawn on top of background planes)
+    if (!hasCaught || morphProgress < 1.0) {
+      _drawNet(canvas, size, netNorm);
+    }
+
+    canvas.restore();
   }
 
-  void _drawCloud(Canvas canvas, Size size, Offset center) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.12);
-    canvas.drawOval(Rect.fromCenter(center: center, width: 90, height: 32), paint);
-    canvas.drawOval(Rect.fromCenter(center: center.translate(-25, -12), width: 60, height: 32), paint);
-    canvas.drawOval(Rect.fromCenter(center: center.translate(25, -8), width: 70, height: 30), paint);
+  void _drawCloud(Canvas canvas, Size size, Offset center, {double opacity = 0.12}) {
+    final paint = Paint()..color = Colors.white.withValues(alpha: opacity);
+    canvas.drawOval(Rect.fromCenter(center: center, width: 110, height: 36), paint);
+    canvas.drawOval(Rect.fromCenter(center: center.translate(-30, -12), width: 75, height: 34), paint);
+    canvas.drawOval(Rect.fromCenter(center: center.translate(30, -8), width: 85, height: 32), paint);
   }
 
   void _drawDecoPlane(Canvas canvas, Size size, DecoPlane dp) {
@@ -739,9 +817,22 @@ class _GameCanvasPainter extends CustomPainter {
     canvas.restore();
   }
 
-  void _drawPlane(Canvas canvas, Size size, Offset norm) {
+  void _drawPlane(Canvas canvas, Size size, Offset norm, GamePlane gp) {
     final px = norm.dx * size.width;
     final py = norm.dy * size.height;
+
+    // Draw shooting star wind trail behind the plane
+    final trailPaint = Paint()..style = PaintingStyle.fill;
+    for (int i = 1; i <= 6; i++) {
+      final prevT = gp.progress - (i * 0.012);
+      if (prevT > 0) {
+        final prevPos = getPlanePos(prevT, gp.pathSeed);
+        final ppx = prevPos.dx * size.width;
+        final ppy = prevPos.dy * size.height;
+        trailPaint.color = Colors.white.withValues(alpha: (0.35 / i));
+        canvas.drawCircle(Offset(ppx, ppy), (3.0 - i * 0.4).clamp(0.5, 3.0), trailPaint);
+      }
+    }
 
     canvas.save();
     canvas.translate(px, py);
@@ -750,7 +841,7 @@ class _GameCanvasPainter extends CustomPainter {
       ..color = Colors.white
       ..style = PaintingStyle.fill;
     final shadowPaint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
+      ..color = Colors.white.withValues(alpha: 0.3)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
 
     canvas.drawCircle(Offset.zero, 14, shadowPaint);
@@ -865,41 +956,52 @@ class _GameCanvasPainter extends CustomPainter {
       canvas.translate(px, py);
       canvas.scale(1.0 - t * 0.5);
 
-      final planePaint = Paint()..color = Colors.white.withOpacity(1.0 - t * 0.5);
+      final planePaint = Paint()..color = Colors.white.withValues(alpha: 1.0 - t * 0.5);
       final path = Path()
         ..moveTo(20, 0)..lineTo(-15, -8)..lineTo(-6, -2)..lineTo(-15, 8)..lineTo(-8, 2)..close();
       canvas.drawPath(path, planePaint);
       canvas.restore();
-    } else if (morphProgress < 0.6) {
-      // Phase 2: Sparkle / Particle Burst
-      final t = (morphProgress - 0.4) / 0.2; // 0.0 to 1.0
+    } else if (morphProgress < 0.7) {
+      // Phase 2: Spectacular Shockwave + Multi-Colored Particle Burst
+      final t = (morphProgress - 0.4) / 0.3; // 0.0 to 1.0
       
-      // Draw 8 paper scraps radiating outwards
-      final burstPaint = Paint()
-        ..color = Colors.white.withOpacity(1.0 - t)
-        ..style = PaintingStyle.fill;
+      // 1. Expanding shockwave ring
+      final shockwavePaint = Paint()
+        ..color = const Color(0xFFFF2E74).withValues(alpha: 1.0 - t)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0;
+      canvas.drawCircle(Offset(netX, netY), 110.0 * t, shockwavePaint);
 
-      for (int i = 0; i < 8; i++) {
-        final angle = i * math.pi / 4;
-        final dist = 45.0 * t;
+      // 2. High-fidelity multi-colored radial explosion
+      final colors = [
+        const Color(0xFFFF2E74),
+        const Color(0xFFFFD700),
+        const Color(0xFF00E676),
+        const Color(0xFF29B6F6),
+        Colors.white,
+      ];
+      
+      for (int i = 0; i < 18; i++) {
+        final angle = i * (2 * math.pi) / 18.0 + (i * 0.08);
+        final dist = 85.0 * t;
         final px = netX + math.cos(angle) * dist;
         final py = netY + math.sin(angle) * dist;
+        final size = (7.0 * (1.0 - t * 0.5)).clamp(1.5, 7.0);
         
-        final path = Path()
-          ..moveTo(px, py)
-          ..lineTo(px - 5, py - 7)
-          ..lineTo(px + 5, py - 5)
-          ..close();
-        canvas.drawPath(path, burstPaint);
+        final scrapPaint = Paint()
+          ..color = colors[i % colors.length].withValues(alpha: 1.0 - t)
+          ..style = PaintingStyle.fill;
+          
+        canvas.drawCircle(Offset(px, py), size / 2, scrapPaint);
       }
 
       final glowPaint = Paint()
-        ..color = Colors.white.withOpacity(0.8 * (1.0 - t))
+        ..color = Colors.white.withValues(alpha: 0.8 * (1.0 - t))
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16);
       canvas.drawCircle(Offset(netX, netY), 20 * t + 5, glowPaint);
     } else {
       // Phase 3: Chili floats up from net to center
-      final t = (morphProgress - 0.6) / 0.4;
+      final t = (morphProgress - 0.7) / 0.3;
       final px = netX + (centerX - netX) * t;
       final py = netY + (centerY - netY) * t;
 

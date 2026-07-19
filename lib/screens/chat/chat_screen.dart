@@ -428,8 +428,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildInputBar() {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF0C0C0C),
-        border: Border(top: BorderSide(color: Color(0xFF1E1E1E))),
+        color: Color(0xFF0F0F12),
+        border: Border(top: BorderSide(color: Color(0xFF1E1E24), width: 1.2)),
       ),
       padding: EdgeInsets.only(
         left: 16,
@@ -442,22 +442,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E),
+                color: const Color(0xFF1E1E24).withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0xFF2E2E36), width: 1.2),
               ),
               child: TextField(
                 controller: _msgCtrl,
-                style: GoogleFonts.outfit(color: Colors.white, fontSize: 15),
+                style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 15),
                 decoration: InputDecoration(
                   hintText: 'Type a message...',
-                  hintStyle: GoogleFonts.outfit(
-                    color: const Color(0xFF555555),
-                    fontSize: 15,
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                    color: const Color(0xFF55555C),
+                    fontSize: 14,
                   ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 12,
+                    vertical: 10,
                   ),
                 ),
                 maxLines: 4,
@@ -473,11 +474,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               duration: const Duration(milliseconds: 150),
               width: 44,
               height: 44,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFFFF2E74), Color(0xFFE91E63)],
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF2E74), Color(0xFFFF5C00)],
                 ),
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF2E74).withValues(alpha: 0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  )
+                ],
               ),
               alignment: Alignment.center,
               child: _isSending
@@ -527,7 +535,7 @@ class _MessageBubble extends StatelessWidget {
           if (!isMe) ...[
             const CircleAvatar(
               radius: 14,
-              backgroundColor: Color(0xFF1E1E1E),
+              backgroundColor: Color(0xFF1E1E24),
               child: Icon(Icons.person, color: Colors.white70, size: 14),
             ),
             const SizedBox(width: 8),
@@ -537,66 +545,88 @@ class _MessageBubble extends StatelessWidget {
               constraints: BoxConstraints(
                 maxWidth: MediaQuery.of(context).size.width * 0.78,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isMe ? const Color(0xFFFF2E74) : const Color(0xFF1E1E1E),
+                gradient: isMe
+                    ? const LinearGradient(
+                        colors: [Color(0xFFFF2E74), Color(0xFFFF5C00)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: isMe ? null : const Color(0xFF1E1E24),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
                   bottomLeft: Radius.circular(isMe ? 16 : 4),
                   bottomRight: Radius.circular(isMe ? 4 : 16),
                 ),
+                border: Border.all(
+                  color: isMe
+                      ? const Color(0xFFFF2E74).withValues(alpha: 0.2)
+                      : Colors.white.withValues(alpha: 0.05),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  )
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     message.content,
-                    style: GoogleFonts.outfit(
-                      color: isMe ? Colors.white : const Color(0xFFCCCCCC),
+                    style: GoogleFonts.plusJakartaSans(
+                      color: isMe ? Colors.white : const Color(0xFFDDDDDD),
                       fontSize: 15,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   Align(
                     alignment:
                         isMe ? Alignment.centerRight : Alignment.centerLeft,
                     child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _formatTime(message.createdAt),
-                        style: GoogleFonts.outfit(
-                          color: isMe
-                              ? Colors.white.withValues(alpha: 0.7)
-                              : const Color(0xFF888888),
-                          fontSize: 11,
-                        ),
-                      ),
-                      if (isMe) ...[
-                        const SizedBox(width: 4),
-                        if (message.id.startsWith('temp-'))
-                          Icon(
-                            Icons.access_time,
-                            size: 14,
-                            color: Colors.white.withValues(alpha: 0.75),
-                          )
-                        else if (message.isSeen)
-                          Icon(Icons.done_all, size: 16, color: tickColor)
-                        else if (message.deliveredAt != null)
-                          Icon(
-                            Icons.done_all,
-                            size: 16,
-                            color: Colors.white.withValues(alpha: 0.75),
-                          )
-                        else
-                          Icon(
-                            Icons.done,
-                            size: 16,
-                            color: Colors.white.withValues(alpha: 0.75),
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _formatTime(message.createdAt),
+                          style: GoogleFonts.plusJakartaSans(
+                            color: isMe
+                                ? Colors.white.withValues(alpha: 0.7)
+                                : const Color(0xFF7C7C86),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
                           ),
+                        ),
+                        if (isMe) ...[
+                          const SizedBox(width: 4),
+                          if (message.id.startsWith('temp-'))
+                            Icon(
+                              Icons.access_time,
+                              size: 13,
+                              color: Colors.white.withValues(alpha: 0.75),
+                            )
+                          else if (message.isSeen)
+                            Icon(Icons.done_all, size: 15, color: tickColor)
+                          else if (message.deliveredAt != null)
+                            Icon(
+                              Icons.done_all,
+                              size: 15,
+                              color: Colors.white.withValues(alpha: 0.75),
+                            )
+                          else
+                            Icon(
+                              Icons.done,
+                              size: 15,
+                              color: Colors.white.withValues(alpha: 0.75),
+                            ),
+                        ],
                       ],
-                    ],
                     ),
                   ),
                 ],

@@ -148,6 +148,142 @@ class PlaneDelivery {
 }
 
 // ─── CatchResult — revealed after in-game catch ──────────────
+class SenderProfileImage {
+  final String id;
+  final String imageUrl;
+  final int order;
+
+  const SenderProfileImage({
+    required this.id,
+    required this.imageUrl,
+    required this.order,
+  });
+
+  factory SenderProfileImage.fromJson(Map<String, dynamic> json) {
+    return SenderProfileImage(
+      id: json['id']?.toString() ?? '',
+      imageUrl: json['image_url']?.toString() ?? '',
+      order: (json['order'] as int?) ?? 0,
+    );
+  }
+}
+
+class SenderMood {
+  final String id;
+  final String name;
+
+  const SenderMood({required this.id, required this.name});
+
+  factory SenderMood.fromJson(Map<String, dynamic> json) {
+    return SenderMood(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+    );
+  }
+}
+
+class SenderProfileSnapshot {
+  final String userId;
+  final String username;
+  final String name;
+  final int? age;
+  final String city;
+  final String bio;
+  final String? genderName;
+  final bool isOnline;
+  final bool isVerified;
+  final List<SenderProfileImage> profileImages;
+  final List<SenderMood> currentMoods;
+  final List<SenderMood> intents;
+  final List<SenderMood> turnOns;
+  final List<String> hottakes;
+
+  const SenderProfileSnapshot({
+    required this.userId,
+    required this.username,
+    required this.name,
+    this.age,
+    required this.city,
+    required this.bio,
+    this.genderName,
+    required this.isOnline,
+    required this.isVerified,
+    required this.profileImages,
+    required this.currentMoods,
+    required this.intents,
+    required this.turnOns,
+    required this.hottakes,
+  });
+
+  String? get firstImageUrl =>
+      profileImages.isNotEmpty ? profileImages.first.imageUrl : null;
+
+  factory SenderProfileSnapshot.fromJson(Map<String, dynamic> json) {
+    List<SenderProfileImage> images = [];
+    if (json['profile_images'] is List) {
+      images = (json['profile_images'] as List)
+          .map((e) => SenderProfileImage.fromJson(
+              Map<String, dynamic>.from(e as Map)))
+          .toList();
+    }
+
+    List<SenderMood> moods = [];
+    if (json['current_moods'] is List) {
+      moods = (json['current_moods'] as List)
+          .map((e) =>
+              SenderMood.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    }
+
+    List<SenderMood> intents = [];
+    if (json['intents'] is List) {
+      intents = (json['intents'] as List)
+          .map((e) =>
+              SenderMood.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    }
+
+    List<SenderMood> turnOns = [];
+    if (json['turn_ons'] is List) {
+      turnOns = (json['turn_ons'] as List)
+          .map((e) =>
+              SenderMood.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    }
+
+    List<String> hottakes = [];
+    if (json['hottakes'] is List) {
+      hottakes = (json['hottakes'] as List)
+          .map((e) => e?.toString() ?? '')
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+
+    final genderRaw = json['gender'];
+    String? genderName;
+    if (genderRaw is Map) {
+      genderName = genderRaw['name']?.toString();
+    }
+
+    return SenderProfileSnapshot(
+      userId: json['user_id']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      age: json['age'] as int?,
+      city: json['city']?.toString() ?? '',
+      bio: json['bio']?.toString() ?? '',
+      genderName: genderName,
+      isOnline: json['is_online'] as bool? ?? false,
+      isVerified: json['is_verified'] as bool? ?? false,
+      profileImages: images,
+      currentMoods: moods,
+      intents: intents,
+      turnOns: turnOns,
+      hottakes: hottakes,
+    );
+  }
+}
+
 class CatchResult {
   final String planeId;
   final String deliveryId;
@@ -157,6 +293,7 @@ class CatchResult {
   final int? senderAge;
   final String senderCity;
   final DateTime decisionDeadline;
+  final SenderProfileSnapshot? senderProfile;
 
   const CatchResult({
     required this.planeId,
@@ -167,9 +304,15 @@ class CatchResult {
     this.senderAge,
     required this.senderCity,
     required this.decisionDeadline,
+    this.senderProfile,
   });
 
   factory CatchResult.fromJson(Map<String, dynamic> json) {
+    SenderProfileSnapshot? profile;
+    if (json['sender_profile'] is Map) {
+      profile = SenderProfileSnapshot.fromJson(
+          Map<String, dynamic>.from(json['sender_profile'] as Map));
+    }
     return CatchResult(
       planeId: json['plane_id']?.toString() ?? '',
       deliveryId: json['delivery_id']?.toString() ?? '',
@@ -180,6 +323,7 @@ class CatchResult {
       senderCity: json['sender_city']?.toString() ?? '',
       decisionDeadline:
           DateTime.tryParse(json['decision_deadline'] ?? '') ?? DateTime.now(),
+      senderProfile: profile,
     );
   }
 }

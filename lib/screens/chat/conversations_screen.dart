@@ -113,108 +113,122 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     final confessionRequests = ref.watch(confessionRequestsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0C0C0C),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: Row(
-                children: [
-                  Text(
-                    'Messages',
-                    style: GoogleFonts.outfit(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => refreshChatData(ref),
-                    icon: const Icon(Icons.refresh_rounded,
-                        color: Color(0xFF888888)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: Text(
-                'NEW MATCHES',
-                style: GoogleFonts.outfit(
-                  color: const Color(0xFF555555),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 80,
-              child: newMatches.when(
-                data: (matchList) => matchList.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No new matches yet',
-                          style: GoogleFonts.outfit(
-                              color: const Color(0xFF555555), fontSize: 13),
-                        ),
-                      )
-                    : ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.only(left: 24, right: 12),
-                        itemCount: matchList.length,
-                        itemBuilder: (_, i) => _MatchAvatar(
-                          match: matchList[i],
-                          onTap: () {
-                            final m = matchList[i];
-                            final convId = m.conversationId;
-                            if (convId != null && convId.isNotEmpty) {
-                              widget.onOpenChat(
-                                convId,
-                                m.matchedUsername ?? 'User',
-                                otherUserId: m.matchedUserId,
-                              );
-                            }
-                          },
-                        ),
+      backgroundColor: const Color(0xFF08080C),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF0A0A10),
+              Color(0xFF120D1D),
+              Color(0xFF070709),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                child: Row(
+                  children: [
+                    Text(
+                      'Messages',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
                       ),
-                loading: () => const Center(
-                  child: CircularProgressIndicator(
-                      color: Color(0xFFFF2E74), strokeWidth: 2),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => refreshChatData(ref),
+                      icon: const Icon(Icons.refresh_rounded,
+                          color: Color(0xFF888888)),
+                    ),
+                  ],
                 ),
-                error: (_, __) => Center(
-                  child: TextButton(
-                    onPressed: () => refreshChatData(ref),
-                    child: Text(
-                      'Could not load matches — tap to retry',
-                      style: GoogleFonts.outfit(
-                          color: const Color(0xFF555555), fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.only(left: 24),
+                child: Text(
+                  'NEW MATCHES',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: const Color(0xFF6C6C76),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 84,
+                child: newMatches.when(
+                  data: (matchList) => matchList.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No new matches yet',
+                            style: GoogleFonts.plusJakartaSans(
+                                color: const Color(0xFF55555C), fontSize: 13),
+                          ),
+                        )
+                      : ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.only(left: 24, right: 12),
+                          itemCount: matchList.length,
+                          itemBuilder: (_, i) => _MatchAvatar(
+                            match: matchList[i],
+                            onTap: () {
+                              final m = matchList[i];
+                              final convId = m.conversationId;
+                              if (convId != null && convId.isNotEmpty) {
+                                widget.onOpenChat(
+                                  convId,
+                                  m.matchedUsername ?? 'User',
+                                  otherUserId: m.matchedUserId,
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(
+                        color: Color(0xFFFF2E74), strokeWidth: 2),
+                  ),
+                  error: (_, __) => Center(
+                    child: TextButton(
+                      onPressed: () => refreshChatData(ref),
+                      child: Text(
+                        'Could not load matches — tap to retry',
+                        style: GoogleFonts.plusJakartaSans(
+                            color: const Color(0xFF55555C), fontSize: 13),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Container(height: 1, color: const Color(0xFF1E1E1E)),
-            ),
-            Expanded(
-              child: _buildMainContent(
-                conversations,
-                confessionRequests,
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(height: 1.2, color: const Color(0xFF1E1E24)),
               ),
-            ),
-          ],
+              Expanded(
+                child: _buildMainContent(
+                  conversations,
+                  confessionRequests,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
-  }
+  } }
 
   Widget _buildMainContent(
     AsyncValue<List<Conversation>> conversations,
@@ -241,7 +255,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.only(top: 12, bottom: 16),
+      padding: const EdgeInsets.only(top: 16, bottom: 16),
       children: [
         if (requestsLoading)
           const Padding(
@@ -259,11 +273,11 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
           ),
         if (requests.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
             child: Text(
               'CONFESSION CHAT REQUESTS',
-              style: GoogleFonts.outfit(
-                color: const Color(0xFF555555),
+              style: GoogleFonts.plusJakartaSans(
+                color: const Color(0xFF6C6C76),
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.5,
@@ -281,15 +295,15 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
           if (activeConversations.isNotEmpty) ...[
             const SizedBox(height: 8),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 10),
-              child: Container(height: 1, color: const Color(0xFF1E1E1E)),
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+              child: Container(height: 1.2, color: const Color(0xFF1E1E24)),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
               child: Text(
                 'CONVERSATIONS',
-                style: GoogleFonts.outfit(
-                  color: const Color(0xFF555555),
+                style: GoogleFonts.plusJakartaSans(
+                  color: const Color(0xFF6C6C76),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.5,
@@ -323,7 +337,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
             const SizedBox(height: 16),
             Text(
               'No messages yet',
-              style: GoogleFonts.outfit(
+              style: GoogleFonts.plusJakartaSans(
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -333,8 +347,8 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
             Text(
               'Browse the feed and send someone a message!',
               textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
-                  color: const Color(0xFF888888), fontSize: 14),
+              style: GoogleFonts.plusJakartaSans(
+                  color: const Color(0xFF8C8C96), fontSize: 14),
             ),
           ],
         ),
@@ -348,12 +362,12 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text('Could not load messages',
-              style: GoogleFonts.outfit(color: const Color(0xFF888888))),
+              style: GoogleFonts.plusJakartaSans(color: const Color(0xFF8C8C96))),
           const SizedBox(height: 12),
           TextButton(
             onPressed: () => refreshChatData(ref),
             child: Text('Retry',
-                style: GoogleFonts.outfit(color: const Color(0xFFFF2E74))),
+                style: GoogleFonts.plusJakartaSans(color: const Color(0xFFFF2E74))),
           ),
         ],
       ),
@@ -388,9 +402,16 @@ class _ConfessionRequestCard extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF141416),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF2A2A30)),
+        color: const Color(0xFF141419).withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF24242B), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          )
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -399,26 +420,28 @@ class _ConfessionRequestCard extends StatelessWidget {
             children: [
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
+                  color: const Color(0xFFFF2E74).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFF2E74).withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   '🤫 Confession request',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.plusJakartaSans(
                     color: const Color(0xFFFF2E74),
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
               const Spacer(),
               Text(
                 _timeAgo(request.createdAt),
-                style: GoogleFonts.outfit(
-                  color: const Color(0xFF555555),
-                  fontSize: 11,
+                style: GoogleFonts.plusJakartaSans(
+                  color: const Color(0xFF6C6C76),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -428,12 +451,13 @@ class _ConfessionRequestCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: const Color(0xFF1E1E1E),
+                backgroundColor: const Color(0xFF1E1E24),
                 child: Text(
                   senderName.isNotEmpty ? senderName[0].toUpperCase() : '?',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.plusJakartaSans(
                     color: const Color(0xFFFF2E74),
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -441,10 +465,10 @@ class _ConfessionRequestCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   senderName,
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.plusJakartaSans(
                     color: Colors.white,
                     fontSize: 15,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -453,10 +477,10 @@ class _ConfessionRequestCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             'From your confession:',
-            style: GoogleFonts.outfit(
-              color: const Color(0xFF666666),
+            style: GoogleFonts.plusJakartaSans(
+              color: const Color(0xFF7C7C86),
               fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
@@ -464,8 +488,8 @@ class _ConfessionRequestCard extends StatelessWidget {
             '"${request.confessionText}"',
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.outfit(
-              color: const Color(0xFFAAAAAA),
+            style: GoogleFonts.plusJakartaSans(
+              color: const Color(0xFFA0A0AB),
               fontSize: 13,
               height: 1.45,
               fontStyle: FontStyle.italic,
@@ -474,10 +498,10 @@ class _ConfessionRequestCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             'Their message:',
-            style: GoogleFonts.outfit(
-              color: const Color(0xFF666666),
+            style: GoogleFonts.plusJakartaSans(
+              color: const Color(0xFF7C7C86),
               fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
@@ -485,23 +509,33 @@ class _ConfessionRequestCard extends StatelessWidget {
             '"${request.message}"',
             maxLines: 4,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.outfit(
+            style: GoogleFonts.plusJakartaSans(
               color: const Color(0xFFEEEEEE),
               fontSize: 14,
               height: 1.45,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: GestureDetector(
                   onTap: isProcessing ? null : onAccept,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF2E74),
-                      borderRadius: BorderRadius.circular(10),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFF2E74), Color(0xFFFF5C00)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF2E74).withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        )
+                      ],
                     ),
                     alignment: Alignment.center,
                     child: isProcessing
@@ -515,9 +549,9 @@ class _ConfessionRequestCard extends StatelessWidget {
                           )
                         : Text(
                             'Accept',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.plusJakartaSans(
                               color: Colors.white,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
                           ),
@@ -529,18 +563,18 @@ class _ConfessionRequestCard extends StatelessWidget {
                 child: GestureDetector(
                   onTap: isProcessing ? null : onReject,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E1E),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF333333)),
+                      color: const Color(0xFF1E1E24),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF2E2E36), width: 1.2),
                     ),
                     alignment: Alignment.center,
                     child: Text(
                       'Decline',
-                      style: GoogleFonts.outfit(
-                        color: const Color(0xFF888888),
-                        fontWeight: FontWeight.w600,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: const Color(0xFF8C8C96),
+                        fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
                     ),
@@ -570,44 +604,46 @@ class _MatchAvatar extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFF2E74), Color(0xFFE91E63)],
+            _PulsingMatchRing(
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFFF2E74), Color(0xFFFF5C00)],
+                  ),
                 ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(2),
-                child: CircleAvatar(
-                  backgroundColor: const Color(0xFF1E1E1E),
-                  backgroundImage: match.matchedAvatarUrl != null
-                      ? CachedNetworkImageProvider(match.matchedAvatarUrl!)
-                      : null,
-                  child: match.matchedAvatarUrl == null
-                      ? Text(
-                          _initial(match.matchedUsername),
-                          style: GoogleFonts.outfit(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        )
-                      : null,
+                child: Padding(
+                  padding: const EdgeInsets.all(2.5),
+                  child: CircleAvatar(
+                    backgroundColor: const Color(0xFF1E1E24),
+                    backgroundImage: match.matchedAvatarUrl != null
+                        ? CachedNetworkImageProvider(match.matchedAvatarUrl!)
+                        : null,
+                    child: match.matchedAvatarUrl == null
+                        ? Text(
+                            _initial(match.matchedUsername),
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             SizedBox(
-              width: 56,
+              width: 58,
               child: Text(
                 match.matchedUsername ?? 'User',
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.outfit(
-                    color: const Color(0xFFAAAAAA), fontSize: 10),
+                style: GoogleFonts.plusJakartaSans(
+                    color: const Color(0xFFA0A0AB), fontSize: 10, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -641,7 +677,7 @@ class _ConversationTile extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 26,
-                backgroundColor: const Color(0xFF1E1E1E),
+                backgroundColor: const Color(0xFF1E1E24),
                 backgroundImage: conversation.otherAvatarUrl != null
                     ? CachedNetworkImageProvider(conversation.otherAvatarUrl!)
                     : null,
@@ -657,24 +693,24 @@ class _ConversationTile extends StatelessWidget {
                   children: [
                     Text(
                       conversation.otherUsername ?? 'User',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.plusJakartaSans(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: hasUnread
-                            ? FontWeight.w700
-                            : FontWeight.w500,
+                            ? FontWeight.bold
+                            : FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       conversation.lastMessage?.content ??
                           'Tap to start chatting',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.plusJakartaSans(
                         color: hasUnread
                             ? Colors.white
-                            : const Color(0xFF666666),
+                            : const Color(0xFF7C7C86),
                         fontSize: 13,
                         fontWeight: hasUnread
                             ? FontWeight.w600
@@ -695,16 +731,71 @@ class _ConversationTile extends StatelessWidget {
                   alignment: Alignment.center,
                   child: Text(
                     '${conversation.unreadCount}',
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.plusJakartaSans(
                         color: Colors.white,
                         fontSize: 10,
-                        fontWeight: FontWeight.w700),
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+// Stateful ring widget for active matches pulsing neon ring
+class _PulsingMatchRing extends StatefulWidget {
+  final Widget child;
+  const _PulsingMatchRing({required this.child});
+
+  @override
+  State<_PulsingMatchRing> createState() => _PulsingMatchRingState();
+}
+
+class _PulsingMatchRingState extends State<_PulsingMatchRing>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _glowRadius;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _glowRadius = Tween<double>(begin: 2.0, end: 7.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _glowRadius,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF2E74).withValues(alpha: 0.4),
+                blurRadius: _glowRadius.value,
+                spreadRadius: _glowRadius.value * 0.4,
+              ),
+            ],
+          ),
+          child: widget.child,
+        );
+      },
     );
   }
 }

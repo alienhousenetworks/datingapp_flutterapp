@@ -231,12 +231,19 @@ class _PaperPlaneComposeScreenState
                     const SizedBox(height: 10),
                     Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E1E),
+                        color: const Color(0xFF1E1E1E).withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: const Color(0xFF2A2A2A),
-                          width: 1,
+                          color: const Color(0xFF2A2A2E),
+                          width: 1.5,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: TextField(
                         controller: _messageController,
@@ -253,7 +260,7 @@ class _PaperPlaneComposeScreenState
                           hintText:
                               'Write something for the person who catches your plane...',
                           hintStyle: TextStyle(
-                            color: Colors.white.withOpacity(0.3),
+                            color: Colors.white.withValues(alpha: 0.3),
                             fontSize: 14,
                           ),
                           border: InputBorder.none,
@@ -263,22 +270,50 @@ class _PaperPlaneComposeScreenState
                         onChanged: (_) => setState(() {}),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        '$remaining left',
-                        style: TextStyle(
-                          color: remaining < 20
-                              ? Colors.orange
-                              : Colors.white38,
-                          fontSize: 12,
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            value: _messageController.text.length / _maxChars,
+                            strokeWidth: 2,
+                            backgroundColor: Colors.white12,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              remaining < 20
+                                  ? Colors.redAccent
+                                  : remaining < 60
+                                      ? Colors.orangeAccent
+                                      : const Color(0xFFFF2E74),
+                            ),
+                          ),
                         ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '$remaining left',
+                          style: TextStyle(
+                            color: remaining < 20
+                                ? Colors.redAccent
+                                : remaining < 60
+                                    ? Colors.orangeAccent
+                                    : Colors.white38,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
                     // ── Sticker picker ──
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     const Text(
                       'Add a sticker (optional)',
                       style: TextStyle(
@@ -287,9 +322,9 @@ class _PaperPlaneComposeScreenState
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     SizedBox(
-                      height: 44,
+                      height: 52,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         itemCount: _stickers.length + 1, // +1 for "none"
@@ -299,27 +334,32 @@ class _PaperPlaneComposeScreenState
                             return GestureDetector(
                               onTap: () =>
                                   setState(() => _selectedSticker = ''),
-                              child: AnimatedContainer(
+                              child: AnimatedScale(
+                                scale: selected ? 1.12 : 1.0,
                                 duration: const Duration(milliseconds: 200),
-                                width: 44,
-                                height: 44,
-                                margin: const EdgeInsets.only(right: 10),
-                                decoration: BoxDecoration(
-                                  color: selected
-                                      ? Colors.white12
-                                      : Colors.transparent,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
+                                curve: Curves.easeOutBack,
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 44,
+                                  height: 44,
+                                  margin: const EdgeInsets.only(right: 10),
+                                  decoration: BoxDecoration(
                                     color: selected
-                                        ? Colors.white54
-                                        : Colors.white24,
-                                    width: 1.5,
+                                        ? Colors.white12
+                                        : Colors.white.withValues(alpha: 0.04),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: selected
+                                          ? Colors.white54
+                                          : Colors.white.withValues(alpha: 0.1),
+                                      width: 2.0,
+                                    ),
                                   ),
-                                ),
-                                child: const Center(
-                                  child: Text('✕',
-                                      style:
-                                          TextStyle(color: Colors.white54)),
+                                  child: const Center(
+                                    child: Text('✕',
+                                        style:
+                                            TextStyle(color: Colors.white54, fontSize: 16)),
+                                  ),
                                 ),
                               ),
                             );
@@ -331,27 +371,41 @@ class _PaperPlaneComposeScreenState
                               HapticFeedback.selectionClick();
                               setState(() => _selectedSticker = sticker);
                             },
-                            child: AnimatedContainer(
+                            child: AnimatedScale(
+                              scale: selected ? 1.15 : 1.0,
                               duration: const Duration(milliseconds: 200),
-                              width: 44,
-                              height: 44,
-                              margin: const EdgeInsets.only(right: 10),
-                              decoration: BoxDecoration(
-                                color: selected
-                                    ? const Color(0xFFFF2E74).withOpacity(0.2)
-                                    : Colors.transparent,
-                                shape: BoxShape.circle,
-                                border: Border.all(
+                              curve: Curves.easeOutBack,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: 44,
+                                height: 44,
+                                margin: const EdgeInsets.only(right: 10),
+                                decoration: BoxDecoration(
                                   color: selected
-                                      ? const Color(0xFFFF2E74)
-                                      : Colors.white12,
-                                  width: 1.5,
+                                      ? const Color(0xFFFF2E74).withValues(alpha: 0.25)
+                                      : Colors.white.withValues(alpha: 0.04),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: selected
+                                        ? const Color(0xFFFF2E74)
+                                        : Colors.white.withValues(alpha: 0.1),
+                                    width: 2.0,
+                                  ),
+                                  boxShadow: selected
+                                      ? [
+                                          BoxShadow(
+                                            color: const Color(0xFFFF2E74).withValues(alpha: 0.4),
+                                            blurRadius: 10,
+                                            spreadRadius: 1,
+                                          )
+                                        ]
+                                      : [],
                                 ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  sticker,
-                                  style: const TextStyle(fontSize: 22),
+                                child: Center(
+                                  child: Text(
+                                    sticker,
+                                    style: const TextStyle(fontSize: 22),
+                                  ),
                                 ),
                               ),
                             ),
@@ -603,6 +657,7 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
   double _dragProgress = 0.0;
   bool _isAnimating = false;
   bool _isLaunching = false;
+  int _lastHapticTick = 0;
 
   late AnimationController _foldCtrl;
   late AnimationController _floatCtrl;
@@ -614,11 +669,11 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
     super.initState();
     _foldCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 320),
     );
     _foldCurve = CurvedAnimation(
       parent: _foldCtrl,
-      curve: Curves.easeInOutCubic,
+      curve: Curves.easeOutCubic,
     );
     _foldCtrl.addListener(() {
       setState(() => _dragProgress = _foldCurve.value);
@@ -644,41 +699,14 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
     super.dispose();
   }
 
-  Future<void> _triggerAutoFold() async {
+  void _onPanStart(DragStartDetails details) {
     if (_isAnimating || _isLaunching) return;
-    setState(() => _isAnimating = true);
-    HapticFeedback.mediumImpact();
-
-    final from = _dragProgress;
-    _foldCtrl.value = from;
-    await _foldCtrl.forward();
-    if (!mounted) return;
-
-    HapticFeedback.selectionClick();
-    await Future.delayed(const Duration(milliseconds: 200));
-    if (!mounted) return;
-
-    if (_stage < _totalStages) {
-      setState(() {
-        _stage++;
-        _dragProgress = 0.0;
-        _isAnimating = false;
-      });
-      _foldCtrl.reset();
-      HapticFeedback.lightImpact();
-    } else {
-      // Final launch pose
-      setState(() => _isLaunching = true);
-      HapticFeedback.heavyImpact();
-      await _launchCtrl.forward();
-      if (!mounted) return;
-      widget.onFoldComplete();
-    }
+    _foldCtrl.stop();
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
     if (_isAnimating || _isLaunching) return;
-    double delta = 0;
+    double delta = 0.0;
     switch (_stage) {
       case 1:
         delta = details.delta.dx + details.delta.dy;
@@ -700,16 +728,103 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
         break;
     }
 
-    if (delta <= 0) return;
     setState(() {
-      _dragProgress = (_dragProgress + delta / 180).clamp(0.0, 1.0);
-      if (_dragProgress > 0.12 && _dragProgress < 0.15) {
-        HapticFeedback.selectionClick();
-      }
-      if (_dragProgress >= 0.25) {
-        _triggerAutoFold();
+      // Scale swipe delta for a physical and precise control feel
+      _dragProgress = (_dragProgress + delta / 220).clamp(0.0, 1.0);
+      
+      // Emit micro-haptic clicks to feel paper fibers bending/resisting
+      final currentTick = (_dragProgress * 6).floor();
+      if (currentTick != _lastHapticTick) {
+        _lastHapticTick = currentTick;
+        HapticFeedback.lightImpact();
       }
     });
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    if (_isAnimating || _isLaunching) return;
+    // Dynamic snap check: if folded past 55%, snap to completion. Otherwise, spring back.
+    if (_dragProgress >= 0.55) {
+      _completeFold();
+    } else {
+      _snapBack();
+    }
+  }
+
+  Future<void> _completeFold() async {
+    setState(() => _isAnimating = true);
+    _foldCtrl.value = _dragProgress;
+    HapticFeedback.lightImpact();
+
+    // Smoothly animate the rest of the fold to completion using a nice spring curve
+    await _foldCtrl.animateTo(1.0, duration: const Duration(milliseconds: 320), curve: Curves.easeOutBack);
+    if (!mounted) return;
+
+    HapticFeedback.mediumImpact();
+    await Future.delayed(const Duration(milliseconds: 180));
+    if (!mounted) return;
+
+    if (_stage < _totalStages) {
+      setState(() {
+        _stage++;
+        _dragProgress = 0.0;
+        _isAnimating = false;
+        _lastHapticTick = 0;
+      });
+      _foldCtrl.reset();
+      HapticFeedback.lightImpact();
+    } else {
+      setState(() => _isLaunching = true);
+      HapticFeedback.heavyImpact();
+      await _launchCtrl.forward();
+      if (!mounted) return;
+      widget.onFoldComplete();
+    }
+  }
+
+  Future<void> _snapBack() async {
+    setState(() => _isAnimating = true);
+    _foldCtrl.value = _dragProgress;
+
+    // Bounce back to flat open state
+    await _foldCtrl.animateTo(0.0, duration: const Duration(milliseconds: 250), curve: Curves.easeOutCubic);
+    if (!mounted) return;
+
+    setState(() {
+      _dragProgress = 0.0;
+      _isAnimating = false;
+      _lastHapticTick = 0;
+    });
+    _foldCtrl.reset();
+    HapticFeedback.selectionClick();
+  }
+
+  Future<void> _runAutoFoldSequence() async {
+    if (_isAnimating || _isLaunching) return;
+    setState(() => _isLaunching = true);
+
+    while (_stage <= _totalStages) {
+      HapticFeedback.mediumImpact();
+      _foldCtrl.value = 0.0;
+      await _foldCtrl.animateTo(1.0, duration: const Duration(milliseconds: 180), curve: Curves.fastOutSlowIn);
+      if (!mounted) return;
+
+      HapticFeedback.selectionClick();
+      if (_stage < _totalStages) {
+        setState(() {
+          _stage++;
+          _dragProgress = 0.0;
+        });
+      } else {
+        break;
+      }
+      await Future.delayed(const Duration(milliseconds: 60));
+    }
+
+    HapticFeedback.heavyImpact();
+    await _launchCtrl.forward();
+    if (!mounted) return;
+    widget.onFoldComplete();
   }
 
   ({String title, String helper, Alignment guide}) get _copy {
@@ -821,6 +936,32 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
                   ),
                 ),
                 centerTitle: true,
+                actions: [
+                  if (!_isLaunching)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: TextButton.icon(
+                        onPressed: _runAutoFoldSequence,
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFFFF2E74),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: const BorderSide(color: Color(0xFFFF2E74), width: 1),
+                          ),
+                        ),
+                        icon: const Icon(Icons.auto_awesome, size: 14),
+                        label: const Text(
+                          'Auto-Fold',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(28, 4, 28, 0),
@@ -905,7 +1046,9 @@ class _InteractiveFolderState extends State<_InteractiveFolder>
                           transform: transformMatrix,
                           alignment: Alignment.center,
                           child: GestureDetector(
+                            onPanStart: _onPanStart,
                             onPanUpdate: _onPanUpdate,
+                            onPanEnd: _onPanEnd,
                             child: SizedBox(
                               // Large full screen canvas
                               width: screenSize.width * 0.9,
@@ -1159,6 +1302,36 @@ class _FoldablePaperPainter extends CustomPainter {
     canvas.drawPath(path, _edgePaint());
   }
 
+  void _draw3DCrease(Canvas canvas, Offset p1, Offset p2, Offset perp) {
+    // Light reflection highlight
+    canvas.drawLine(
+      p1 + perp * 0.8,
+      p2 + perp * 0.8,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.65)
+        ..strokeWidth = 1.0
+        ..isAntiAlias = true,
+    );
+    // Dark crease line
+    canvas.drawLine(
+      p1,
+      p2,
+      Paint()
+        ..color = _crease.withValues(alpha: 0.8)
+        ..strokeWidth = 1.3
+        ..isAntiAlias = true,
+    );
+    // Crease fold shadow
+    canvas.drawLine(
+      p1 - perp * 0.8,
+      p2 - perp * 0.8,
+      Paint()
+        ..color = _foldShadow.withValues(alpha: 0.35)
+        ..strokeWidth = 1.0
+        ..isAntiAlias = true,
+    );
+  }
+
   void _drawFoldingFlap({
     required Canvas canvas,
     required Offset creaseA,
@@ -1207,18 +1380,30 @@ class _FoldablePaperPainter extends CustomPainter {
       ..lineTo(creaseB.dx, creaseB.dy)
       ..close();
 
-    if (p > 0.02 && p < 0.98) {
+    // Dynamic liftoff shadow physics
+    if (p > 0.01 && p < 0.99) {
+      final height = 1.0 - (2.0 * (p - 0.5)).abs(); // 0.0 at flat edges, 1.0 at 90-deg peak
+      final shadowBlur = 3.0 + height * 18.0;
+      final shadowOpacity = 0.25 - height * 0.14;
+      final shadowOffset = Offset(
+        perp.dx * (1.5 + height * 12.0),
+        perp.dy * (1.5 + height * 12.0) + (1.0 + height * 5.0),
+      );
+
       canvas.drawPath(
-        flap.shift(Offset(perp.dx * 4, perp.dy * 4 + 2)),
+        flap.shift(shadowOffset),
         Paint()
-          ..color = Colors.black.withValues(alpha: 0.15 + shade * 0.2)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+          ..color = Colors.black.withValues(alpha: shadowOpacity)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, shadowBlur)
+          ..isAntiAlias = true,
       );
     }
 
     canvas.drawPath(flap, _paperFill(shade: shade * 0.55));
     canvas.drawPath(flap, _edgePaint(width: 1.0));
-    canvas.drawLine(creaseA, creaseB, _creasePaint(alpha: 0.7 + shade * 0.25, width: 1.5));
+    
+    // Draw crease line with high-fidelity highlights and shadows
+    _draw3DCrease(canvas, creaseA, creaseB, perp);
 
     if (showGuide && p < 0.85) {
       final ghost = Path()
@@ -1391,16 +1576,13 @@ class _FoldablePaperPainter extends CustomPainter {
 
     // ── STAGE 1: Top-left corner fold ──
     if (stage == 1) {
-      final p = _s(t);
-      final Path sheet = p < 0.5
-          ? (Path()..addRect(Rect.fromLTRB(left, top, right, bottom)))
-          : (Path()
-            ..moveTo(left, foldY)
-            ..lineTo(midX, top)
-            ..lineTo(right, top)
-            ..lineTo(right, bottom)
-            ..lineTo(left, bottom)
-            ..close());
+      final Path sheet = Path()
+        ..moveTo(left, foldY)
+        ..lineTo(midX, top)
+        ..lineTo(right, top)
+        ..lineTo(right, bottom)
+        ..lineTo(left, bottom)
+        ..close();
       _drawPaperBody(canvas, sheet);
       canvas.drawLine(Offset(midX, top), Offset(midX, bottom), _creasePaint(alpha: 0.3, width: 1));
 
@@ -1414,33 +1596,20 @@ class _FoldablePaperPainter extends CustomPainter {
         showGuide: t < 0.95,
       );
 
-      _drawMessage(canvas, Rect.fromLTRB(left + 24, foldY + 16, right - 24, bottom - 24), message, opacity: 0.9 - p * 0.4);
+      _drawMessage(canvas, Rect.fromLTRB(left + 24, foldY + 16, right - 24, bottom - 24), message, opacity: 0.9 - _s(t) * 0.4);
       return;
     }
 
     // ── STAGE 2: Top-right corner fold ──
     if (stage == 2) {
-      final p = _s(t);
-      final cutBody = Path()
+      final Path sheet = Path()
         ..moveTo(left, foldY)
         ..lineTo(midX, top)
         ..lineTo(right, foldY)
         ..lineTo(right, bottom)
         ..lineTo(left, bottom)
         ..close();
-
-      if (p < 0.5) {
-        final pre = Path()
-          ..moveTo(left, foldY)
-          ..lineTo(midX, top)
-          ..lineTo(right, top)
-          ..lineTo(right, bottom)
-          ..lineTo(left, bottom)
-          ..close();
-        _drawPaperBody(canvas, pre);
-      } else {
-        _drawPaperBody(canvas, cutBody);
-      }
+      _drawPaperBody(canvas, sheet);
 
       final leftDone = Path()
         ..moveTo(left, foldY)
@@ -1465,7 +1634,6 @@ class _FoldablePaperPainter extends CustomPainter {
 
     // ── STAGE 3: Left Diagonal Fold (Folding new left edge to center) ──
     if (stage == 3) {
-      // Crease line goes from top center tip to some offset on the bottom edge
       final Offset creaseStart = Offset(midX, top);
       final Offset creaseEnd = Offset(left + w * 0.35, bottom);
 
@@ -1492,7 +1660,6 @@ class _FoldablePaperPainter extends CustomPainter {
       canvas.drawPath(leftCorner, _paperFill(shade: 0.12));
       canvas.drawPath(rightCorner, _paperFill(shade: 0.12));
 
-      // Folding the diagonal flap
       _drawFoldingFlap(
         canvas: canvas,
         creaseA: creaseStart,
@@ -1559,6 +1726,10 @@ class _FoldablePaperPainter extends CustomPainter {
         ..close();
       _drawPaperBody(canvas, leftHalf, shade: 0.03, showLines: false);
 
+      final height = 1.0 - (2.0 * (p - 0.5)).abs();
+      final shadowBlur = 4.0 + height * 20.0;
+      final shadowOpacity = 0.25 - height * 0.12;
+
       if (p < 0.5) {
         final openW = (w / 2) * scale;
         final rightHalf = Path()
@@ -1567,6 +1738,14 @@ class _FoldablePaperPainter extends CustomPainter {
           ..lineTo(midX + openW, bottom)
           ..lineTo(midX, bottom)
           ..close();
+          
+        canvas.drawPath(
+          rightHalf.shift(Offset(-height * 14.0, height * 6.0)),
+          Paint()
+            ..color = Colors.black.withValues(alpha: shadowOpacity)
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, shadowBlur)
+            ..isAntiAlias = true,
+        );
         canvas.drawPath(rightHalf, _paperFill(shade: shade * 0.45));
         canvas.drawPath(rightHalf, _edgePaint());
       } else {
@@ -1577,11 +1756,20 @@ class _FoldablePaperPainter extends CustomPainter {
           ..lineTo(midX - flipW, bottom)
           ..lineTo(midX, bottom)
           ..close();
+          
+        canvas.drawPath(
+          over.shift(Offset(-height * 6.0, height * 4.0 + 2)),
+          Paint()
+            ..color = Colors.black.withValues(alpha: shadowOpacity)
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, shadowBlur)
+            ..isAntiAlias = true,
+        );
         canvas.drawPath(over, _paperFill(shade: 0.15 + shade * 0.15));
         canvas.drawPath(over, _edgePaint());
       }
 
-      canvas.drawLine(Offset(midX, top), Offset(midX, bottom), _creasePaint(alpha: 0.9, width: 2.0));
+      // Crease line at center spine
+      _draw3DCrease(canvas, Offset(midX, top), Offset(midX, bottom), const Offset(1.0, 0.0));
       return;
     }
 
@@ -1618,6 +1806,26 @@ class _FoldablePaperPainter extends CustomPainter {
         ..lineTo(midX + wingSpan * 0.8, tailY - 20)
         ..lineTo(bodyRight, tailY - 8)
         ..close();
+
+      // Draw wing liftoff shadows
+      final wingHeight = 1.0 - p;
+      final wingShadowBlur = 3.0 + wingHeight * 12.0;
+      final wingShadowOpacity = 0.22 - wingHeight * 0.1;
+      
+      canvas.drawPath(
+        leftWing.shift(Offset(-wingHeight * 8.0, wingHeight * 4.0 + 1)),
+        Paint()
+          ..color = Colors.black.withValues(alpha: wingShadowOpacity)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, wingShadowBlur)
+          ..isAntiAlias = true,
+      );
+      canvas.drawPath(
+        rightWing.shift(Offset(wingHeight * 8.0, wingHeight * 4.0 + 1)),
+        Paint()
+          ..color = Colors.black.withValues(alpha: wingShadowOpacity)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, wingShadowBlur)
+          ..isAntiAlias = true,
+      );
 
       canvas.drawPath(leftWing, _paperFill(shade: 0.12 + p * 0.05));
       canvas.drawPath(rightWing, _paperFill(shade: 0.06));
@@ -1715,69 +1923,164 @@ class _LaunchSuccessOverlayState extends State<_LaunchSuccessOverlay>
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ScaleTransition(
-        scale: _scale,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 32),
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: const Color(0xFF16161E),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: const Color(0xFFFF2E74).withOpacity(0.5),
-              width: 1.5,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF06060E),
+              Color(0xFF0F0F23),
+              Color(0xFF26102A),
+            ],
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Ambient stars or circles in background
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.15,
+                child: Image.network(
+                  'https://www.transparenttextures.com/patterns/dust.png',
+                  repeat: ImageRepeat.repeat,
+                ),
+              ),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFF2E74).withOpacity(0.2),
-                blurRadius: 30,
-                spreadRadius: 2,
-              )
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                height: 120,
-                width: double.infinity,
-                child: AnimatedBuilder(
-                  animation: _planeFlight,
-                  builder: (context, _) {
-                    final t = _planeFlight.value;
-                    // Flying paper plane along a bezier curve path inside success box
-                    final dx = (t * 220) - 100;
-                    final dy = -sin(t * pi) * 45;
-                    final rot = -cos(t * pi) * 0.6;
-                    return Transform.translate(
-                      offset: Offset(dx, dy),
-                      child: Transform.rotate(
-                        angle: rot,
-                        child: const Text('✈️', style: TextStyle(fontSize: 56)),
+
+            // Immersive Plane flying across the sky
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _planeFlight,
+                builder: (context, _) {
+                  final t = _planeFlight.value;
+                  final screenW = MediaQuery.of(context).size.width;
+                  final screenH = MediaQuery.of(context).size.height;
+                  
+                  // Curved bezier trajectory: flies from bottom-left to top-right
+                  final startX = -100.0;
+                  final startY = screenH * 0.7;
+                  final endX = screenW + 100.0;
+                  final endY = screenH * 0.15;
+                  
+                  // Control point for curve
+                  final cpX = screenW * 0.5;
+                  final cpY = screenH * 0.3;
+                  
+                  // Quadratic bezier interpolation
+                  final dx = (1 - t) * (1 - t) * startX + 2 * (1 - t) * t * cpX + t * t * endX;
+                  final dy = (1 - t) * (1 - t) * startY + 2 * (1 - t) * t * cpY + t * t * endY;
+                  
+                  final rot = -0.5 + t * 0.8;
+                  
+                  return Stack(
+                    children: [
+                      // Trail particles
+                      if (t > 0.05 && t < 0.95)
+                        for (int i = 0; i < 8; i++)
+                          Positioned(
+                            left: dx - (i * 12 * cos(rot)),
+                            top: dy - (i * 12 * sin(rot)) + 20,
+                            child: Opacity(
+                              opacity: ((10 - i) / 10.0) * (1.0 - t).clamp(0.0, 1.0),
+                              child: Container(
+                                width: (6 - i * 0.5).clamp(1.0, 6.0),
+                                height: (6 - i * 0.5).clamp(1.0, 6.0),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFF2E74),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color(0xFFFF2E74),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                      Positioned(
+                        left: dx,
+                        top: dy,
+                        child: Transform.rotate(
+                          angle: rot,
+                          child: const Text('✈️', style: TextStyle(fontSize: 64)),
+                        ),
                       ),
-                    );
-                  },
+                    ],
+                  );
+                },
+              ),
+            ),
+
+            // Success Text Card
+            Center(
+              child: ScaleTransition(
+                scale: _scale,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF16161E).withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: const Color(0xFFFF2E74).withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF2E74).withValues(alpha: 0.15),
+                        blurRadius: 30,
+                        spreadRadius: 2,
+                      )
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF2E74).withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.done_all_rounded,
+                          color: Color(0xFFFF2E74),
+                          size: 40,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Launched Successfully!',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Your paper plane is flying high in the sky.\nSomeone special will catch it soon!',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.65),
+                          fontSize: 14,
+                          height: 1.45,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Launched Successfully!',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Your paper plane is high in the sky.\nSomeone special will catch it soon!',
-                style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 14, height: 1.45),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

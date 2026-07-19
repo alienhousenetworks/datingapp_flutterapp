@@ -121,6 +121,21 @@ class PaperPlaneService {
     }
   }
 
+  /// GET /api/v1/paper-plane/{deliveryId}/sender-profile/
+  /// Returns the full public profile of the plane's sender.
+  /// Only accessible to the recipient of a CAUGHT delivery.
+  Future<SenderProfileSnapshot> fetchSenderProfile(String deliveryId) async {
+    try {
+      final response = await _client.get(
+        '${AppConstants.paperPlaneBase}$deliveryId/sender-profile/',
+      );
+      return SenderProfileSnapshot.fromJson(
+          Map<String, dynamic>.from(response.data as Map));
+    } on DioException catch (e) {
+      throw _parseError(e);
+    }
+  }
+
   /// GET /api/v1/paper-plane/sky/
   Future<List<SkyPlane>> getSkyPlanes() async {
     try {

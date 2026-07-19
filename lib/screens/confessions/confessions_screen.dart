@@ -136,116 +136,134 @@ class _ConfessionsScreenState extends ConsumerState<ConfessionsScreen> {
     final state = ref.watch(confessionsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0C0C0C),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Text('🌙', style: TextStyle(fontSize: 28)),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Confessions',
-                        style: GoogleFonts.outfit(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
+      backgroundColor: const Color(0xFF08080C),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF0A0A10),
+              Color(0xFF140D1D),
+              Color(0xFF070709),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text('🌙', style: TextStyle(fontSize: 28)),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Confessions',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
                         ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: state.isLoading
+                              ? null
+                              : () =>
+                                  ref.read(confessionsProvider.notifier).load(),
+                          icon: const Icon(Icons.refresh_rounded,
+                              color: Color(0xFF888888)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Share anonymously. Relate with others.',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: const Color(0xFF88888C),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: state.isLoading
-                            ? null
-                            : () =>
-                                ref.read(confessionsProvider.notifier).load(),
-                        icon: const Icon(Icons.refresh_rounded,
-                            color: Color(0xFF888888)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Share anonymously. Relate with others.',
-                    style: GoogleFonts.outfit(
-                      color: const Color(0xFF666666),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _ConfessionPostBox(
+                  controller: _bodyCtrl,
+                  moodTags: state.moodTags,
+                  selectedMood: state.selectedMoodTag,
+                  onMoodSelected: (m) =>
+                      ref.read(confessionsProvider.notifier).selectMood(m),
+                  onPost: state.isPosting ? null : _post,
+                  isPosting: state.isPosting,
+                ),
+              ),
+              if (state.error != null) ...[
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    state.error!,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFFFF6B6B),
                       fontSize: 13,
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _ConfessionPostBox(
-                controller: _bodyCtrl,
-                moodTags: state.moodTags,
-                selectedMood: state.selectedMoodTag,
-                onMoodSelected: (m) =>
-                    ref.read(confessionsProvider.notifier).selectMood(m),
-                onPost: state.isPosting ? null : _post,
-                isPosting: state.isPosting,
-              ),
-            ),
-            if (state.error != null) ...[
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  state.error!,
-                  style: GoogleFonts.outfit(
-                    color: const Color(0xFFFF6B6B),
-                    fontSize: 13,
-                  ),
                 ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Expanded(
-              child: state.isLoading && state.items.isEmpty
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFFFF2E74),
-                      ),
-                    )
-                  : state.items.isEmpty
-                      ? _buildEmpty(state.error == null)
-                      : RefreshIndicator(
-                          color: const Color(0xFFFF2E74),
-                          onRefresh: () =>
-                              ref.read(confessionsProvider.notifier).load(),
-                          child: ListView.builder(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 4,
-                            ),
-                            itemCount: state.items.length,
-                            itemBuilder: (_, i) => _ConfessionCard(
-                              confession: state.items[i],
-                              onRelate: () => ref
-                                  .read(confessionsProvider.notifier)
-                                  .relate(state.items[i].id),
-                              onRepost: () =>
-                                  _showRepostDialog(context, state.items[i].id),
-                              onChatRequest: state.items[i].isAuthor ||
-                                      state.items[i].hasRequestedChat
-                                  ? null
-                                  : () => _showChatRequestDialog(
-                                        context,
-                                        state.items[i].id,
-                                      ),
+              ],
+              const SizedBox(height: 16),
+              Expanded(
+                child: state.isLoading && state.items.isEmpty
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFFF2E74),
+                        ),
+                      )
+                    : state.items.isEmpty
+                        ? _buildEmpty(state.error == null)
+                        : RefreshIndicator(
+                            color: const Color(0xFFFF2E74),
+                            onRefresh: () =>
+                                ref.read(confessionsProvider.notifier).load(),
+                            child: ListView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 4,
+                              ),
+                              itemCount: state.items.length,
+                              itemBuilder: (_, i) => _SlideFadeEntrance(
+                                index: i,
+                                child: _ConfessionCard(
+                                  confession: state.items[i],
+                                  onRelate: () => ref
+                                      .read(confessionsProvider.notifier)
+                                      .relate(state.items[i].id),
+                                  onRepost: () =>
+                                      _showRepostDialog(context, state.items[i].id),
+                                  onChatRequest: state.items[i].isAuthor ||
+                                          state.items[i].hasRequestedChat
+                                      ? null
+                                      : () => _showChatRequestDialog(
+                                            context,
+                                            state.items[i].id,
+                                          ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -429,9 +447,16 @@ class _ConfessionPostBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF141416),
+        color: const Color(0xFF14141A).withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2A2A2E)),
+        border: Border.all(color: const Color(0xFF282830), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -439,25 +464,25 @@ class _ConfessionPostBox extends StatelessWidget {
         children: [
           TextField(
             controller: controller,
-            style: GoogleFonts.outfit(color: Colors.white, fontSize: 15),
+            style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 15),
             maxLines: 4,
             minLines: 2,
             maxLength: ConfessionService.maxTextLength,
             decoration: InputDecoration(
               hintText: 'What\'s on your mind? (min ${ConfessionService.minTextLength} chars)',
-              hintStyle: GoogleFonts.outfit(
-                color: const Color(0xFF555555),
-                fontSize: 15,
+              hintStyle: GoogleFonts.plusJakartaSans(
+                color: const Color(0xFF55555C),
+                fontSize: 14,
               ),
               border: InputBorder.none,
               counterStyle:
-                  GoogleFonts.outfit(color: const Color(0xFF555555)),
+                  GoogleFonts.plusJakartaSans(color: const Color(0xFF55555C)),
             ),
           ),
           if (moodTags.isNotEmpty) ...[
             const SizedBox(height: 4),
             SizedBox(
-              height: 34,
+              height: 38,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: moodTags.length + 1,
@@ -481,14 +506,15 @@ class _ConfessionPostBox extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             children: [
               Text(
                 '🎭 Always anonymous',
-                style: GoogleFonts.outfit(
-                  color: const Color(0xFF888888),
-                  fontSize: 13,
+                style: GoogleFonts.plusJakartaSans(
+                  color: const Color(0xFF77777C),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               const Spacer(),
@@ -496,10 +522,17 @@ class _ConfessionPostBox extends StatelessWidget {
                 onTap: onPost,
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFF2E74),
                     borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF2E74).withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
                   ),
                   child: isPosting
                       ? const SizedBox(
@@ -512,9 +545,9 @@ class _ConfessionPostBox extends StatelessWidget {
                         )
                       : Text(
                           'Post',
-                          style: GoogleFonts.outfit(
+                          style: GoogleFonts.plusJakartaSans(
                             color: Colors.white,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
                         ),
@@ -543,25 +576,46 @@ class _MoodChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected
-              ? const Color(0xFFFF2E74).withValues(alpha: 0.2)
-              : const Color(0xFF1E1E1E),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
+      child: AnimatedScale(
+        scale: selected ? 1.05 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            gradient: selected
+                ? const LinearGradient(
+                    colors: [Color(0xFFFF2E74), Color(0xFFFF5C00)],
+                  )
+                : null,
             color: selected
-                ? const Color(0xFFFF2E74)
-                : const Color(0xFF333333),
+                ? null
+                : const Color(0xFF1E1E24),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFFFF2E74)
+                  : const Color(0xFF2C2C35),
+              width: 1.2,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFFFF2E74).withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    )
+                  ]
+                : [],
           ),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.outfit(
-            color: selected ? const Color(0xFFFF2E74) : const Color(0xFF888888),
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+          child: Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              color: selected ? Colors.white : const Color(0xFF8C8C96),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
@@ -586,13 +640,57 @@ class _ConfessionCard extends StatefulWidget {
   State<_ConfessionCard> createState() => _ConfessionCardState();
 }
 
-class _ConfessionCardState extends State<_ConfessionCard> {
+class _ConfessionCardState extends State<_ConfessionCard>
+    with SingleTickerProviderStateMixin {
   bool _related = false;
+  late AnimationController _heartController;
+  late Animation<double> _heartScale;
+  List<_FloatingHeartParticle> _floatingHearts = [];
 
   @override
   void initState() {
     super.initState();
     AnalyticsService.instance.trackConfessionViewed(widget.confession.id);
+    _heartController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _heartScale = Tween<double>(begin: 1.0, end: 1.4).animate(
+      CurvedAnimation(parent: _heartController, curve: Curves.bounceOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _heartController.dispose();
+    super.dispose();
+  }
+
+  void _spawnParticles() {
+    final rng = math.Random();
+    setState(() {
+      _floatingHearts = List.generate(4, (index) {
+        return _FloatingHeartParticle(
+          dx: -24.0 + rng.nextDouble() * 48.0,
+          speed: 1.5 + rng.nextDouble() * 2.0,
+          scale: 0.7 + rng.nextDouble() * 0.5,
+        );
+      });
+    });
+
+    Timer.periodic(const Duration(milliseconds: 16), (timer) {
+      if (!mounted || _floatingHearts.isEmpty) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        for (final p in _floatingHearts) {
+          p.dy -= p.speed;
+          p.opacity = (p.opacity - 0.04).clamp(0.0, 1.0);
+        }
+        _floatingHearts.removeWhere((p) => p.opacity <= 0);
+      });
+    });
   }
 
   String _timeAgo(DateTime dt) {
@@ -610,164 +708,252 @@ class _ConfessionCardState extends State<_ConfessionCard> {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF141416),
+        color: const Color(0xFF141419).withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF202024)),
+        border: Border.all(color: const Color(0xFF24242B), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
-                  borderRadius: BorderRadius.circular(12),
+              Row(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E1E24),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 1),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.theater_comedy_rounded, color: Color(0xFFFF2E74), size: 13),
+                        const SizedBox(width: 5),
+                        Text(
+                          c.isAuthor ? 'You' : 'Anonymous',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: const Color(0xFFCCCCCC),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    _timeAgo(c.createdAt),
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFF6C6C76),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              if (c.hasAuthorMeta) ...[
+                const SizedBox(height: 8),
+                _AuthorMetaRow(confession: c),
+              ],
+              const SizedBox(height: 14),
+              Text(
+                c.text,
+                style: GoogleFonts.plusJakartaSans(
+                  color: const Color(0xFFEEEEEE),
+                  fontSize: 15,
+                  height: 1.55,
+                  fontWeight: FontWeight.w500,
                 ),
-                child: Text(
-                  c.isAuthor ? '🎭 You' : '🎭 Anonymous',
-                  style: GoogleFonts.outfit(
-                    color: const Color(0xFF888888),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+              ),
+              if (c.moodLabel.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E1E24),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${_moodEmoji(c.moodTag ?? '')} ${c.moodLabel}',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFFA0A0AB),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-              const Spacer(),
-              Text(
-                _timeAgo(c.createdAt),
-                style: GoogleFonts.outfit(
-                  color: const Color(0xFF555555),
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-          if (c.hasAuthorMeta) ...[
-            const SizedBox(height: 8),
-            _AuthorMetaRow(confession: c),
-          ],
-          const SizedBox(height: 12),
-          Text(
-            c.text,
-            style: GoogleFonts.outfit(
-              color: const Color(0xFFEEEEEE),
-              fontSize: 15,
-              height: 1.55,
-            ),
-          ),
-          if (c.moodLabel.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '${_moodEmoji(c.moodTag ?? '')} ${c.moodLabel}',
-                style: GoogleFonts.outfit(
-                  color: const Color(0xFF888888),
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  if (_related) return;
-                  setState(() => _related = true);
-                  widget.onRelate();
-                },
-                child: Row(
-                  children: [
-                    Icon(
-                      _related ? Icons.favorite : Icons.favorite_border,
-                      color: _related
-                          ? const Color(0xFFFF2E74)
-                          : const Color(0xFF666666),
-                      size: 18,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      '${c.relateCount} relate',
-                      style: GoogleFonts.outfit(
-                        color: _related
-                            ? const Color(0xFFFF2E74)
-                            : const Color(0xFF666666),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 20),
-              if (widget.onChatRequest != null) ...[
-                GestureDetector(
-                  onTap: widget.onChatRequest,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.mail_outline_rounded,
-                          color: Color(0xFF666666), size: 18),
-                      const SizedBox(width: 5),
-                      Text(
-                        'Chat',
-                        style: GoogleFonts.outfit(
-                          color: const Color(0xFF666666),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+              ],
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      if (_related) return;
+                      setState(() => _related = true);
+                      _heartController.forward().then((_) => _heartController.reverse());
+                      _spawnParticles();
+                      widget.onRelate();
+                    },
+                    child: ScaleTransition(
+                      scale: _heartScale,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _related
+                              ? const Color(0xFFFF2E74).withValues(alpha: 0.15)
+                              : Colors.white.withValues(alpha: 0.03),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: _related
+                                ? const Color(0xFFFF2E74)
+                                : Colors.white.withValues(alpha: 0.05),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _related ? Icons.favorite : Icons.favorite_border,
+                              color: _related
+                                  ? const Color(0xFFFF2E74)
+                                  : const Color(0xFF6C6C76),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              '${c.relateCount} relate',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: _related
+                                    ? const Color(0xFFFF2E74)
+                                    : const Color(0xFF6C6C76),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 20),
-              ] else if (!c.isAuthor && c.hasRequestedChat) ...[
-                Row(
-                  children: [
-                    Icon(Icons.mark_email_read_outlined,
-                        color: const Color(0xFFFF2E74).withValues(alpha: 0.7),
-                        size: 18),
-                    const SizedBox(width: 5),
-                    Text(
-                      'Requested',
-                      style: GoogleFonts.outfit(
-                        color: const Color(0xFFFF2E74).withValues(alpha: 0.7),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                  const SizedBox(width: 14),
+                  if (widget.onChatRequest != null) ...[
+                    GestureDetector(
+                      onTap: widget.onChatRequest,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.03),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.mail_outline_rounded,
+                                color: Color(0xFF6C6C76), size: 18),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Chat',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: const Color(0xFF6C6C76),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(width: 20),
-              ],
-              GestureDetector(
-                onTap: widget.onRepost,
-                child: Row(
-                  children: [
-                    const Icon(Icons.repeat_rounded,
-                        color: Color(0xFF666666), size: 18),
-                    const SizedBox(width: 5),
-                    Text(
-                      '${c.repostCount} repost',
-                      style: GoogleFonts.outfit(
-                        color: const Color(0xFF666666),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(width: 14),
+                  ] else if (!c.isAuthor && c.hasRequestedChat) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF2E74).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFFFF2E74).withValues(alpha: 0.4),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.mark_email_read_outlined,
+                              color: Color(0xFFFF2E74), size: 18),
+                          const SizedBox(width: 5),
+                          Text(
+                            'Requested',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: const Color(0xFFFF2E74),
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(width: 14),
                   ],
-                ),
+                  GestureDetector(
+                    onTap: widget.onRepost,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.03),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.repeat_rounded,
+                              color: Color(0xFF6C6C76), size: 18),
+                          const SizedBox(width: 5),
+                          Text(
+                            '${c.repostCount} repost',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: const Color(0xFF6C6C76),
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
+          // Floating Hearts Layer
+          for (final p in _floatingHearts)
+            Positioned(
+              left: 40 + p.dx,
+              bottom: 20 + p.dy,
+              child: Opacity(
+                opacity: p.opacity,
+                child: Transform.scale(
+                  scale: p.scale,
+                  child: const Text('❤️', style: TextStyle(fontSize: 18)),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -846,11 +1032,80 @@ class _MetaChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: GoogleFonts.outfit(
+        style: GoogleFonts.plusJakartaSans(
           color: const Color(0xFFAAAAAA),
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
+      ),
+    );
+  }
+}
+
+// Helper model for floating heart particles
+class _FloatingHeartParticle {
+  final double dx;
+  double dy = 0.0;
+  double opacity = 1.0;
+  final double speed;
+  final double scale;
+
+  _FloatingHeartParticle({
+    required this.dx,
+    required this.speed,
+    required this.scale,
+  });
+}
+
+// Helper widget for staggered list animations
+class _SlideFadeEntrance extends StatefulWidget {
+  final Widget child;
+  final int index;
+  const _SlideFadeEntrance({required this.child, required this.index});
+
+  @override
+  State<_SlideFadeEntrance> createState() => _SlideFadeEntranceState();
+}
+
+class _SlideFadeEntranceState extends State<_SlideFadeEntrance>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacity;
+  late Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+    _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _slide = Tween<Offset>(begin: const Offset(0.0, 0.12), end: Offset.zero).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
+
+    // Staggered delay based on list item index
+    Future.delayed(Duration(milliseconds: widget.index * 50), () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(
+        position: _slide,
+        child: widget.child,
       ),
     );
   }
