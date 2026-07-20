@@ -1,5 +1,5 @@
 // =============================================================================
-// Alien House — Background Frames & Variants
+// SPYCE — Background Frames & Variants
 // Generated from Figma node 831:2792 "Selected Frames. For feed"
 // File: 6AWNmmO1bGxYbxPqycN37q
 //
@@ -18,7 +18,7 @@
 //
 // Usage:
 //   FlameBackground(variant: FlameVariant.flame1, color: Color(0xFFFF5722))
-//   AlienHouseSquareSplashFrame(variant: SquareSplashVariant.v80, color: Color(0xFF6C63FF))
+//   SpyceSquareSplashFrame(variant: SquareSplashVariant.v80, color: Color(0xFF6C63FF))
 //   etc.
 // =============================================================================
 
@@ -58,8 +58,8 @@ enum AdvanceFlameVariant { v102, v103, v104 }
 //    top of the base 8-vector shape (Flame4/5/6 have ~23 extra vectors).
 // ─────────────────────────────────────────────────────────────────────────────
 
-class AlienHouseFlameFrame extends StatelessWidget {
-  const AlienHouseFlameFrame({
+class SpyceFlameFrame extends StatelessWidget {
+  const SpyceFlameFrame({
     super.key,
     required this.variant,
     this.baseColor = const Color(0xFFFF6B35),
@@ -239,8 +239,8 @@ class _FlamePainter extends CustomPainter {
 //    rotation/offset of the ring stack (from Figma x/y positions).
 // ─────────────────────────────────────────────────────────────────────────────
 
-class AlienHouseSquareSplashFrame extends StatelessWidget {
-  const AlienHouseSquareSplashFrame({
+class SpyceSquareSplashFrame extends StatelessWidget {
+  const SpyceSquareSplashFrame({
     super.key,
     required this.variant,
     this.primaryColor = const Color(0xFF6C63FF),
@@ -1361,11 +1361,11 @@ class _ExtendedFlamePainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CONVENIENCE FACTORY — AlienHouseBackground
+// CONVENIENCE FACTORY — SpyceBackground
 // Single entry point for all background types via enum
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum AlienHouseBackgroundType {
+enum SpyceBackgroundType {
   flame,
   flameExtended,
   squareSplash,
@@ -1380,13 +1380,13 @@ enum AlienHouseBackgroundType {
 }
 
 /// Top-level factory widget. Wrap in a sized container for proper constraints.
-class AlienHouseBackground extends StatelessWidget {
-  const AlienHouseBackground.flame({
+class SpyceBackground extends StatelessWidget {
+  const SpyceBackground.flame({
     super.key,
     required FlameVariant variant,
     this.color = const Color(0xFFFF6B35),
     this.backgroundColor = const Color(0xFF1A0A00),
-  })  : _type = AlienHouseBackgroundType.flame,
+  })  : _type = SpyceBackgroundType.flame,
         _flameVariant = variant,
         _flameExtVariant = null,
         _sqVariant = null,
@@ -1399,12 +1399,12 @@ class AlienHouseBackground extends StatelessWidget {
         _sfVariant = null,
         _afVariant = null;
 
-  const AlienHouseBackground.squareSplash({
+  const SpyceBackground.squareSplash({
     super.key,
     required SquareSplashVariant variant,
     this.color = const Color(0xFF6C63FF),
     this.backgroundColor = Colors.white,
-  })  : _type = AlienHouseBackgroundType.squareSplash,
+  })  : _type = SpyceBackgroundType.squareSplash,
         _flameVariant = null,
         _flameExtVariant = null,
         _sqVariant = variant,
@@ -1417,12 +1417,12 @@ class AlienHouseBackground extends StatelessWidget {
         _sfVariant = null,
         _afVariant = null;
 
-  const AlienHouseBackground.puzzleSplash({
+  const SpyceBackground.puzzleSplash({
     super.key,
     required PuzzleSplashVariant variant,
     this.color = const Color(0xFF00BCD4),
     this.backgroundColor = Colors.white,
-  })  : _type = AlienHouseBackgroundType.puzzleSplash,
+  })  : _type = SpyceBackgroundType.puzzleSplash,
         _flameVariant = null,
         _flameExtVariant = null,
         _sqVariant = null,
@@ -1435,12 +1435,12 @@ class AlienHouseBackground extends StatelessWidget {
         _sfVariant = null,
         _afVariant = null;
 
-  const AlienHouseBackground.hexagonSplash({
+  const SpyceBackground.hexagonSplash({
     super.key,
     required HexagonSplashVariant variant,
     this.color = const Color(0xFF4CAF50),
     this.backgroundColor = Colors.white,
-  })  : _type = AlienHouseBackgroundType.hexagonSplash,
+  })  : _type = SpyceBackgroundType.hexagonSplash,
         _flameVariant = null,
         _flameExtVariant = null,
         _sqVariant = null,
@@ -1453,12 +1453,12 @@ class AlienHouseBackground extends StatelessWidget {
         _sfVariant = null,
         _afVariant = null;
 
-  const AlienHouseBackground.octagonSplash({
+  const SpyceBackground.octagonSplash({
     super.key,
     required OctagonSplashVariant variant,
     this.color = const Color(0xFFFF5722),
     this.backgroundColor = Colors.white,
-  })  : _type = AlienHouseBackgroundType.octagonSplash,
+  })  : _type = SpyceBackgroundType.octagonSplash,
         _flameVariant = null,
         _flameExtVariant = null,
         _sqVariant = null,
@@ -1471,12 +1471,12 @@ class AlienHouseBackground extends StatelessWidget {
         _sfVariant = null,
         _afVariant = null;
 
-  const AlienHouseBackground.biSplash({
+  const SpyceBackground.biSplash({
     super.key,
     required BiSplashVariant variant,
     this.color = const Color(0xFF9C27B0),
     this.backgroundColor = Colors.white,
-  })  : _type = AlienHouseBackgroundType.biSplash,
+  })  : _type = SpyceBackgroundType.biSplash,
         _flameVariant = null,
         _flameExtVariant = null,
         _sqVariant = null,
@@ -1489,12 +1489,12 @@ class AlienHouseBackground extends StatelessWidget {
         _sfVariant = null,
         _afVariant = null;
 
-  const AlienHouseBackground.flameSplash({
+  const SpyceBackground.flameSplash({
     super.key,
     required FlameSplashVariant variant,
     this.color = const Color(0xFFFF9800),
     this.backgroundColor = Colors.white,
-  })  : _type = AlienHouseBackgroundType.flameSplash,
+  })  : _type = SpyceBackgroundType.flameSplash,
         _flameVariant = null,
         _flameExtVariant = null,
         _sqVariant = null,
@@ -1507,12 +1507,12 @@ class AlienHouseBackground extends StatelessWidget {
         _sfVariant = null,
         _afVariant = null;
 
-  const AlienHouseBackground.triSplash({
+  const SpyceBackground.triSplash({
     super.key,
     required TriSplashVariant variant,
     this.color = const Color(0xFF2196F3),
     this.backgroundColor = Colors.white,
-  })  : _type = AlienHouseBackgroundType.triSplash,
+  })  : _type = SpyceBackgroundType.triSplash,
         _flameVariant = null,
         _flameExtVariant = null,
         _sqVariant = null,
@@ -1525,12 +1525,12 @@ class AlienHouseBackground extends StatelessWidget {
         _sfVariant = null,
         _afVariant = null;
 
-  const AlienHouseBackground.simpleFlame({
+  const SpyceBackground.simpleFlame({
     super.key,
     required SimpleFlameVariant variant,
     this.color = const Color(0xFFE91E63),
     this.backgroundColor = Colors.white,
-  })  : _type = AlienHouseBackgroundType.simpleFlame,
+  })  : _type = SpyceBackgroundType.simpleFlame,
         _flameVariant = null,
         _flameExtVariant = null,
         _sqVariant = null,
@@ -1543,12 +1543,12 @@ class AlienHouseBackground extends StatelessWidget {
         _sfVariant = variant,
         _afVariant = null;
 
-  const AlienHouseBackground.advanceFlame({
+  const SpyceBackground.advanceFlame({
     super.key,
     required AdvanceFlameVariant variant,
     this.color = const Color(0xFFFF5722),
     this.backgroundColor = Colors.white,
-  })  : _type = AlienHouseBackgroundType.advanceFlame,
+  })  : _type = SpyceBackgroundType.advanceFlame,
         _flameVariant = null,
         _flameExtVariant = null,
         _sqVariant = null,
@@ -1561,7 +1561,7 @@ class AlienHouseBackground extends StatelessWidget {
         _sfVariant = null,
         _afVariant = variant;
 
-  final AlienHouseBackgroundType _type;
+  final SpyceBackgroundType _type;
   final FlameVariant? _flameVariant;
   final FlameExtendedVariant? _flameExtVariant;
   final SquareSplashVariant? _sqVariant;
@@ -1580,69 +1580,69 @@ class AlienHouseBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     switch (_type) {
-      case AlienHouseBackgroundType.flame:
-        return AlienHouseFlameFrame(
+      case SpyceBackgroundType.flame:
+        return SpyceFlameFrame(
           variant: _flameVariant!,
           baseColor: color,
           accentColor: color.withOpacity(0.7),
           backgroundColor: backgroundColor,
         );
-      case AlienHouseBackgroundType.flameExtended:
+      case SpyceBackgroundType.flameExtended:
         return ExtendedFlameBackground(
           variant: _flameExtVariant!,
           baseColor: color,
           accentColor: color.withOpacity(0.7),
           backgroundColor: backgroundColor,
         );
-      case AlienHouseBackgroundType.squareSplash:
-        return AlienHouseSquareSplashFrame(
+      case SpyceBackgroundType.squareSplash:
+        return SpyceSquareSplashFrame(
           variant: _sqVariant!,
           primaryColor: color,
           backgroundColor: backgroundColor,
         );
-      case AlienHouseBackgroundType.puzzleSplash:
+      case SpyceBackgroundType.puzzleSplash:
         return PuzzleSplashBackground(
           variant: _pzVariant!,
           primaryColor: color,
           backgroundColor: backgroundColor,
         );
-      case AlienHouseBackgroundType.hexagonSplash:
+      case SpyceBackgroundType.hexagonSplash:
         return HexagonSplashBackground(
           variant: _hxVariant!,
           primaryColor: color,
           backgroundColor: backgroundColor,
         );
-      case AlienHouseBackgroundType.octagonSplash:
+      case SpyceBackgroundType.octagonSplash:
         return OctagonSplashBackground(
           variant: _ocVariant!,
           primaryColor: color,
           backgroundColor: backgroundColor,
         );
-      case AlienHouseBackgroundType.biSplash:
+      case SpyceBackgroundType.biSplash:
         return BiSplashBackground(
           variant: _biVariant!,
           primaryColor: color,
           backgroundColor: backgroundColor,
         );
-      case AlienHouseBackgroundType.flameSplash:
+      case SpyceBackgroundType.flameSplash:
         return FlameSplashBackground(
           variant: _fspVariant!,
           primaryColor: color,
           backgroundColor: backgroundColor,
         );
-      case AlienHouseBackgroundType.triSplash:
+      case SpyceBackgroundType.triSplash:
         return TriSplashBackground(
           variant: _triVariant!,
           primaryColor: color,
           backgroundColor: backgroundColor,
         );
-      case AlienHouseBackgroundType.simpleFlame:
+      case SpyceBackgroundType.simpleFlame:
         return SimpleFlameBackground(
           variant: _sfVariant!,
           primaryColor: color,
           backgroundColor: backgroundColor,
         );
-      case AlienHouseBackgroundType.advanceFlame:
+      case SpyceBackgroundType.advanceFlame:
         return AdvanceFlameBackground(
           variant: _afVariant!,
           primaryColor: color,

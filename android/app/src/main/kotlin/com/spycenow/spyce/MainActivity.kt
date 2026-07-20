@@ -1,4 +1,4 @@
-package com.example.spicy
+package com.spycenow.spyce
 
 import io.flutter.embedding.android.FlutterActivity
 

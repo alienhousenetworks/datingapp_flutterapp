@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../models/theme_model.dart';
-import 'alien_house_backgrounds.dart';
+import 'spyce_backgrounds.dart';
 import 'feed_card_theme.dart';
 
-/// Backend B01–B07 families mapped to Figma Alien-House frame painters.
+/// Backend B01–B07 families mapped to Figma SPYCE frame painters.
 enum DiscoveryPattern {
   flameWave, // B01 — Flame1–6
   puzzleSplash, // B02 — frames 88–96
@@ -114,50 +114,50 @@ class DiscoveryBackgroundCatalog {
 }
 
 /// Maps stable backend variant IDs (B01-sunset, …) to Figma frame enums.
-class AlienHouseVariantResolver {
+class SpyceVariantResolver {
   static Widget build(DiscoveryBackgroundSpec spec) {
     final primary = spec.feedTheme.primaryColor;
     final background = spec.palette.background;
 
     switch (spec.pattern) {
       case DiscoveryPattern.flameWave:
-        return AlienHouseBackground.flame(
+        return SpyceBackground.flame(
           variant: _flameVariant(spec.variantId),
           color: primary,
           backgroundColor: _darken(background),
         );
       case DiscoveryPattern.puzzleSplash:
-        return AlienHouseBackground.puzzleSplash(
+        return SpyceBackground.puzzleSplash(
           variant: _puzzleVariant(spec.variantId),
           color: primary,
           backgroundColor: background,
         );
       case DiscoveryPattern.hexagonSplash:
-        return AlienHouseBackground.hexagonSplash(
+        return SpyceBackground.hexagonSplash(
           variant: _hexagonVariant(spec.variantId),
           color: primary,
           backgroundColor: background,
         );
       case DiscoveryPattern.biSplash:
-        return AlienHouseBackground.biSplash(
+        return SpyceBackground.biSplash(
           variant: _biVariant(spec.variantId),
           color: primary,
           backgroundColor: background,
         );
       case DiscoveryPattern.squareSplash:
-        return AlienHouseBackground.squareSplash(
+        return SpyceBackground.squareSplash(
           variant: _squareVariant(spec.variantId),
           color: primary,
           backgroundColor: background,
         );
       case DiscoveryPattern.advanceFlame:
-        return AlienHouseBackground.advanceFlame(
+        return SpyceBackground.advanceFlame(
           variant: _advanceFlameVariant(spec.variantId),
           color: primary,
           backgroundColor: _darken(background),
         );
       case DiscoveryPattern.octagonSplash:
-        return AlienHouseBackground.octagonSplash(
+        return SpyceBackground.octagonSplash(
           variant: _octagonVariant(spec.variantId),
           color: primary,
           backgroundColor: background,

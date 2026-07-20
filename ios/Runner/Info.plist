@@ -60,11 +60,11 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>spyce uses your location to show nearby matches and display your city on your profile.</string>
+	<string>SPYCE uses your location to show nearby matches and display your city on your profile.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>spyce needs microphone access for voice and video calls.</string>
+	<string>SPYCE needs microphone access for voice and video calls.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>spyce needs camera access for video calls.</string>
+	<string>SPYCE needs camera access for video calls.</string>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

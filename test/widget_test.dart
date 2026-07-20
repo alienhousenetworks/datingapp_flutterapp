@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:spicy/main.dart';
-import 'package:spicy/screens/splash/splash_screen.dart';
+import 'package:spyce/main.dart';
+import 'package:spyce/screens/splash/splash_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

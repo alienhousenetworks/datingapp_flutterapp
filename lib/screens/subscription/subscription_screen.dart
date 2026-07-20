@@ -107,7 +107,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               const Text('⭐', style: TextStyle(fontSize: 48)),
               const SizedBox(height: 16),
               Text(
-                'Unlock spyce Premium',
+                'Unlock SPYCE Premium',
                 style: GoogleFonts.outfit(
                   color: Colors.white,
                   fontSize: 32,
