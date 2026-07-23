@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../providers/profile_provider.dart';
+import 'theme_picker_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: const Color(0xFF0C0C0C),
       appBar: AppBar(
@@ -28,6 +31,22 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
+          _SettingsSection(
+            title: 'Appearance',
+            items: [
+              _SettingsItem(
+                icon: Icons.palette_outlined,
+                label: 'Theme',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ThemePickerScreen(),
+                  ),
+                ).then((_) => ref.read(profileProvider.notifier).loadProfile()),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
           _SettingsSection(
             title: 'Privacy',
             items: [
