@@ -19,6 +19,7 @@ import '../../utils/profile_completeness.dart';
 import '../../services/verification_service.dart';
 import 'theme_picker_screen.dart';
 import 'my_avatar_screen.dart';
+import 'settings_screen.dart';
 
 class MyProfileScreen extends ConsumerStatefulWidget {
   const MyProfileScreen({super.key});
@@ -685,6 +686,16 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       child: Column(
         children: [
+          _ActionButton(
+            label: 'Settings',
+            icon: Icons.settings_outlined,
+            color: const Color(0xFF555555),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
+          ),
+          const SizedBox(height: 10),
           _ActionButton(
             label: 'Subscription',
             icon: Icons.star_rounded,
